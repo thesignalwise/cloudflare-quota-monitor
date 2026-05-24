@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloudflare Quota Monitor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="popup-page">
+  <main class="popup-shell" id="content">
+    <header class="app-bar">
+      <div class="app-bar__inner">
+        <div class="brand">
+          <img class="brand-logo brand-logo--small" src="icons/icon48.png" alt="" />
+          <div class="brand-copy">
+            <h1 class="brand-title">Quota Monitor</h1>
+          </div>
+        </div>
+        <button id="refreshBtn" class="icon-button" type="button" aria-label="Refresh quotas">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M20 12a8 8 0 0 1-13.66 5.66" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4 12A8 8 0 0 1 17.66 6.34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M17 2v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7 22v-5H2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <nav class="tab-row" aria-label="Extension views">
+      <a class="tab-link is-active" href="popup.html">Popup</a>
+      <a class="tab-link" href="dashboard.html" target="_blank" rel="noreferrer">Dashboard</a>
+      <a class="tab-link" href="options.html" target="_blank" rel="noreferrer">Settings</a>
+    </nav>
+
+    <section class="popup-content" aria-label="Current quota usage">
+      <div class="popup-command">
+        <div class="popup-risk">
+          <span>Highest usage</span>
+          <strong id="topPercent">--</strong>
+          <small id="topLabel">Waiting for data</small>
+        </div>
+        <div class="popup-kpis" aria-label="Quota status summary">
+          <div>
+            <strong id="criticalCount">0</strong>
+            <span>critical</span>
+          </div>
+          <div>
+            <strong id="watchCount">0</strong>
+            <span>watch</span>
+          </div>
+          <div>
+            <strong id="trackedCount">0</strong>
+            <span>tracked</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="status" class="state-panel"></div>
+      <div id="focusStrip" class="attention-strip" hidden></div>
+      <div id="cards" class="mini-metric-grid" hidden></div>
+    </section>
+
+    <footer class="popup-actions">
+      <button id="dashboardBtn" class="btn btn--primary btn--wide" type="button">
+        <span>Dashboard</span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7 17 17 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M8 7h9v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

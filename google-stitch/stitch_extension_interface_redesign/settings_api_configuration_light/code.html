@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Extension Settings - Quota Monitor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#311300",
+                        "on-surface-variant": "#564336",
+                        "secondary": "#5f5e5e",
+                        "on-tertiary-fixed": "#001e2f",
+                        "inverse-surface": "#2e3132",
+                        "surface": "#f8f9fa",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-background": "#191c1d",
+                        "surface-container-low": "#f3f4f5",
+                        "surface-container-high": "#e7e8e9",
+                        "on-primary-fixed-variant": "#723600",
+                        "surface-variant": "#e1e3e4",
+                        "secondary-fixed": "#e5e2e1",
+                        "surface-bright": "#f8f9fa",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#ffb787",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#964900",
+                        "on-surface": "#191c1d",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "primary": "#964900",
+                        "secondary-container": "#e2dfde",
+                        "on-secondary-container": "#636262",
+                        "error": "#ba1a1a",
+                        "on-primary-container": "#592900",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "on-tertiary-container": "#003a56",
+                        "tertiary-fixed": "#c9e6ff",
+                        "primary-container": "#f38020",
+                        "tertiary-fixed-dim": "#89ceff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-container-highest": "#e1e3e4",
+                        "outline": "#8a7264",
+                        "surface-dim": "#d9dadb",
+                        "outline-variant": "#ddc1b1",
+                        "surface-container": "#edeeef",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#00a9f0",
+                        "background": "#f8f9fa",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#ffb787",
+                        "tertiary": "#006591",
+                        "on-secondary-fixed-variant": "#474746",
+                        "primary-fixed": "#ffdcc7",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "xl": "32px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "margin": "24px",
+                        "lg": "24px",
+                        "container-max": "1280px",
+                        "base": "4px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .input-glow:focus {
+            box-shadow: 0 0 0 2px rgba(243, 128, 32, 0.15);
+        }
+        /* Level 2 Shadow */
+        .card-shadow {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-background font-body-md text-body-md text-on-surface antialiased h-screen flex overflow-hidden">
+<!-- Desktop SideNavBar -->
+<aside class="hidden md:flex flex-col h-screen w-64 left-0 top-0 bg-surface-container-low py-lg px-md gap-sm border-r border-surface-variant pt-xl">
+<!-- Navigation Links -->
+<nav class="flex flex-col gap-xs flex-1">
+<!-- Active Tab -->
+<div class="flex items-center gap-md p-md text-primary font-bold bg-surface-container-highest rounded-lg cursor-pointer active:scale-98 transition-all hover:bg-surface-container-high transition-colors duration-200">
+<span>API Configuration</span>
+</div>
+<!-- Inactive Tabs -->
+<div class="flex items-center gap-md p-md text-on-surface-variant font-medium cursor-pointer active:scale-98 transition-all hover:bg-surface-container-high transition-colors duration-200 rounded-lg">
+<span>WebDAV Backup</span>
+</div>
+<div class="flex items-center gap-md p-md text-on-surface-variant font-medium cursor-pointer active:scale-98 transition-all hover:bg-surface-container-high transition-colors duration-200 rounded-lg">
+<span>Monitored Services</span>
+</div>
+<div class="flex items-center gap-md p-md text-on-surface-variant font-medium cursor-pointer active:scale-98 transition-all hover:bg-surface-container-high transition-colors duration-200 rounded-lg">
+<span>Sync Schedule</span>
+</div>
+</nav>
+<!-- User Profile Placeholder -->
+<div class="mt-auto pt-md border-t border-surface-variant flex items-center gap-sm px-sm cursor-pointer hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold font-label-md text-label-md">
+                U
+            </div>
+<span class="font-label-md text-label-md text-on-surface-variant">User Profile</span>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-screen overflow-y-auto relative">
+<!-- Mobile TopAppBar (Hidden on MD+) -->
+<header class="md:hidden flex justify-between items-center w-full px-lg py-md bg-surface shadow-sm sticky top-0 z-10">
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">Quota Monitor</h1>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors duration-200">menu</span>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="flex-1 p-margin md:p-xl max-w-container-max mx-auto w-full max-w-4xl">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-xl">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">API Configuration</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-xs">Manage your extension credentials and API settings.</p>
+</div>
+<!-- Privacy Badge -->
+<div class="inline-flex items-center gap-xs bg-surface-container-low px-sm py-xs rounded-full border border-surface-variant self-start md:self-auto">
+<span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span class="font-label-md text-label-md text-on-surface">Local Storage Only</span>
+</div>
+</div>
+<!-- Stacked Layout for Settings -->
+<div class="flex flex-col gap-lg">
+<!-- Cloudflare Credentials Card -->
+<section class="bg-surface-container-lowest rounded-xl card-shadow border border-surface-variant p-lg">
+<div class="flex items-center gap-sm mb-lg pb-md border-b border-surface-container">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Cloudflare API</h3>
+</div>
+<div class="space-y-lg">
+<div class="flex flex-col gap-xs">
+<label class="font-body-sm text-body-sm font-bold text-on-surface" for="accountId">Account ID</label>
+<input class="w-full bg-surface-container-lowest border border-surface-variant rounded-lg px-md py-sm text-on-surface focus:border-primary-container focus:outline-none input-glow transition-all font-body-md text-body-md" id="accountId" placeholder="e.g. 1a2b3c4d5e6f7g8h9i0j" type="text"/>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">Find this on your Cloudflare dashboard overview page.</p>
+</div>
+<div class="flex flex-col gap-xs">
+<label class="font-body-sm text-body-sm font-bold text-on-surface" for="apiToken">Global API Key or Token</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-surface-variant rounded-lg px-md py-sm pr-[40px] text-on-surface focus:border-primary-container focus:outline-none input-glow transition-all font-body-md text-body-md" id="apiToken" placeholder="Enter your token..." type="password"/>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant cursor-pointer hover:text-on-surface">visibility</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Monitored Services Card -->
+<section class="bg-surface-container-lowest rounded-xl card-shadow border border-surface-variant p-lg">
+<div class="flex items-center gap-sm mb-lg pb-md border-b border-surface-container">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Monitored Services</h3>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-md">
+<label class="flex items-center gap-sm cursor-pointer group">
+<input checked="" class="w-5 h-5 rounded border-surface-variant text-primary-container focus:ring-primary-container" type="checkbox"/>
+<span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors">Workers</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input checked="" class="w-5 h-5 rounded border-surface-variant text-primary-container focus:ring-primary-container" type="checkbox"/>
+<span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors">Pages</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input checked="" class="w-5 h-5 rounded border-surface-variant text-primary-container focus:ring-primary-container" type="checkbox"/>
+<span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors">KV</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input checked="" class="w-5 h-5 rounded border-surface-variant text-primary-container focus:ring-primary-container" type="checkbox"/>
+<span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors">D1</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input checked="" class="w-5 h-5 rounded border-surface-variant text-primary-container focus:ring-primary-container" type="checkbox"/>
+<span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors">R2</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input class="w-5 h-5 rounded border-surface-variant text-primary-container focus:ring-primary-container" type="checkbox"/>
+<span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors">Queues</span>
+</label>
+</div>
+</section>
+<!-- Sync Schedule Card -->
+<section class="bg-surface-container-lowest rounded-xl card-shadow border border-surface-variant p-lg">
+<div class="flex items-center gap-sm mb-lg pb-md border-b border-surface-container">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Sync Schedule</h3>
+</div>
+<div class="flex flex-col gap-sm">
+<label class="font-body-sm text-body-sm font-bold text-on-surface" for="syncSchedule">Refresh Frequency</label>
+<select class="w-full max-w-sm bg-surface-container-lowest border border-surface-variant rounded-lg px-md py-sm text-on-surface focus:border-primary-container focus:outline-none input-glow transition-all font-body-md text-body-md" id="syncSchedule">
+<option value="6h">Every 6 hours</option>
+<option selected="" value="24h">Daily</option>
+<option value="48h">Every 2 days</option>
+</select>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">Determines how often usage data is fetched from the API.</p>
+</div>
+</section>
+</div>
+<!-- Sticky Action Bar -->
+<div class="mt-xl sticky bottom-0 bg-background/90 backdrop-blur-sm py-md border-t border-surface-variant flex justify-end">
+<button class="bg-primary-container text-surface-container-lowest px-xl py-sm rounded-lg font-label-md text-label-md font-bold hover:bg-opacity-90 active:scale-95 transition-all shadow-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">save</span>
+                    Save Changes
+                </button>
+</div>
+</div>
+</main>
+</body></html>
