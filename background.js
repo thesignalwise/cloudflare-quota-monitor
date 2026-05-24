@@ -23,6 +23,8 @@ const DEFAULT_SETTINGS = {
   }
 };
 
+const HISTORY_LIMIT = 200;
+
 // Static quota limits for Cloudflare free-tier products. Each entry includes a
 // limit, period, and human-friendly unit used by the UI.
 const QUOTAS = {
@@ -74,6 +76,31 @@ function loadSettings() {
   return new Promise(resolve => {
     chrome.storage.local.get(['settings'], result => {
       resolve(Object.assign({}, DEFAULT_SETTINGS, result.settings || {}));
+    });
+  });
+}
+
+function historyDayKey(timestamp) {
+  const value = Number(timestamp);
+  const date = new Date(Number.isFinite(value) ? value : Date.now());
+  return date.toISOString().slice(0, 10);
+}
+
+function upsertHistorySnapshot(quotas, timestamp = Date.now()) {
+  return new Promise(resolve => {
+    chrome.storage.local.get({ history: [] }, res => {
+      const history = Array.isArray(res.history) ? res.history.filter(entry => entry && entry.quotas) : [];
+      const todayKey = historyDayKey(timestamp);
+      const nextHistory = history
+        .filter(entry => historyDayKey(entry.timestamp) !== todayKey)
+        .concat({ timestamp, quotas })
+        .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
+
+      while (nextHistory.length > HISTORY_LIMIT) {
+        nextHistory.shift();
+      }
+
+      chrome.storage.local.set({ history: nextHistory }, resolve);
     });
   });
 }
@@ -886,20 +913,10 @@ async function updateQuotas() {
         }
       }
     };
-    cachedQuotas = result;
-    await chrome.storage.local.set({ quotas: result });
-
-    // Append to history for trend visualisation. Keep a bounded history.
     const now = Date.now();
-    chrome.storage.local.get({ history: [] }, res => {
-      const history = Array.isArray(res.history) ? res.history : [];
-      history.push({ timestamp: now, quotas: result });
-      // Trim to at most 200 entries to avoid unbounded storage growth
-      while (history.length > 200) {
-        history.shift();
-      }
-      chrome.storage.local.set({ history });
-    });
+    cachedQuotas = result;
+    await chrome.storage.local.set({ quotas: result, lastUpdated: now });
+    await upsertHistorySnapshot(result, now);
   } catch (err) {
     console.warn('Failed to update quotas', err);
     // Do not overwrite cached quotas if query fails

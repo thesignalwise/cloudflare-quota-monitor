@@ -86,7 +86,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
   const packageJson = readJson('package.json');
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, '0.3.1');
+  assert.equal(manifest.version, '0.3.2');
   assert.equal(packageJson.version, manifest.version);
   assert.equal(manifest.default_locale, 'en');
   assert.equal(manifest.name, '__MSG_extName__');
@@ -232,6 +232,9 @@ test('background worker defines the expected quota and message surface', () => {
   assert.match(source, /message\.action === 'getQuotas'/);
   assert.match(source, /message\.action === 'refreshQuotas'/);
   assert.match(source, /chrome\.alarms\.create\('updateQuotas'/);
+  assert.match(source, /function upsertHistorySnapshot/, 'manual refresh should upsert today history instead of appending duplicate samples');
+  assert.match(source, /await upsertHistorySnapshot\(result, now\)/, 'refresh response should wait for history cache writes');
+  assert.match(source, /lastUpdated: now/, 'latest refresh timestamp should be cached with quota data');
 });
 
 test('options page exposes API validation and capability checks', () => {
