@@ -1,6 +1,6 @@
 # Cloudflare Free Quota Monitor
 
-Chrome MV3 extension for monitoring Cloudflare free-tier usage from a compact popup and a unified settings workspace for dashboard, credentials, backup, service coverage, schedule, and About information.
+Chrome MV3 extension for monitoring Cloudflare free-tier usage from a compact popup and a unified settings workspace for dashboard, credentials, backup, privacy, service coverage, schedule, and About information.
 
 The UI follows the Google Stitch "Professional Modern Light" direction included in `google-stitch/`: white and light gray surfaces, Cloudflare orange accents, compact cards, and dense operational data.
 
@@ -53,7 +53,28 @@ Create a Cloudflare API token with read-only access for the products you want to
 - User Details: Read
 - Memberships: Read
 
-The token and account ID are stored only in `chrome.storage.local` by the extension. Local integration tests read them from `.env`.
+The token and account ID are stored in `chrome.storage.local` by the extension. WebDAV backup is optional and includes sensitive settings when the user explicitly runs backup. Local integration tests read credentials from `.env`.
+
+## Privacy And Permissions
+
+The extension is local-first and has no backend service. It sends the Cloudflare API token only to `https://api.cloudflare.com/` for token verification and read-only telemetry.
+
+Default permissions:
+
+- `storage`: save settings and cached quota data locally.
+- `alarms`: refresh quota data on a daily schedule.
+- `notifications`: notify quota risk when applicable.
+- `https://api.cloudflare.com/*`: verify tokens and read Cloudflare telemetry.
+
+Optional permissions:
+
+- `http://*/*` and `https://*/*` are declared only as optional host permissions. They are requested at runtime for the exact WebDAV origin configured by the user.
+
+Privacy surfaces:
+
+- `privacy.html`: extension-bundled privacy policy and Limited Use disclosure.
+- `PRIVACY.md`: website-ready privacy policy text for publishing on an external page.
+- `webdav.html`: visible warning that backup uploads API token, account ID, WebDAV username, and WebDAV password to the configured endpoint.
 
 ## Local Environment
 
@@ -76,7 +97,7 @@ CLOUDFLARE_ACCOUNT_ID=replace_with_your_account_id
 
 - Popup: dense mini-card cockpit sorted by usage pressure. It highlights the highest percentage first, then shows critical/watch/tracked counters and compact metric cards.
 - Dashboard: now lives inside the same sidebar workspace as the other settings pages. It is grouped by Compute & Runtime, Storage & Databases, Messaging & Data Plane, and Analytics & Logs. Use the Cards/List toggle to switch between visual cards and a scan-friendly list.
-- Settings pages: each menu item is a separate page: `options.html`, `webdav.html`, `services.html`, `schedule.html`, `about.html`, `dashboard.html`, and `release-notes.html`. Sidebar footer uses icon-only links for the official website and GitHub repository.
+- Settings pages: each menu item is a separate page: `options.html`, `webdav.html`, `services.html`, `schedule.html`, `about.html`, `privacy.html`, `dashboard.html`, and `release-notes.html`. Sidebar footer uses icon-only links for the official website and GitHub repository.
 - Internationalization: UI defaults to the browser language and supports Simplified Chinese, Traditional Chinese, English, Japanese, and Korean. A manual language selector is available on the About page.
 
 ## Install In Chrome
@@ -103,6 +124,14 @@ The integration checks are skipped if `.env` is missing. With `.env` present, te
 - Every tracked GraphQL dataset returns without schema errors.
 - Pages REST project listing works.
 
+Create a Chrome Web Store-ready ZIP package:
+
+```sh
+npm run package
+```
+
+The package script allowlists extension runtime files and excludes `.env`, screenshots, tests, `google-stitch/`, and other local-only material. Output is written to `dist/cloudflare-quota-monitor-<version>.zip`.
+
 ## Known API Gaps
 
 Cloudflare currently exposes Workers Logs ingestion bytes through GraphQL, but not the exact "Log Events Written" quota counter. Analytics Engine exposes data points written, but not read-query usage. The UI marks these exact quota rows as Not available and still shows available supporting telemetry where possible.
@@ -117,8 +146,10 @@ Cloudflare currently exposes Workers Logs ingestion bytes through GraphQL, but n
 - `services.html`: monitored service coverage.
 - `schedule.html`: refresh cadence.
 - `about.html`: logo, version, privacy, language, and API coverage notes.
+- `privacy.html`, `PRIVACY.md`: bundled and website-ready privacy policy.
 - `release-notes.html`: changelog and release notes.
 - `i18n.js`, `_locales/`: runtime page translations and Chrome extension metadata translations.
 - `options.js`: shared settings persistence for all settings pages.
 - `style.css`: shared Google Stitch-inspired light design system.
 - `tests/extension.test.js`: Node test runner checks.
+- `scripts/package-extension.mjs`: deterministic Chrome extension package builder.

@@ -86,7 +86,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
   const packageJson = readJson('package.json');
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, '0.3.2');
+  assert.equal(manifest.version, '0.3.3');
   assert.equal(packageJson.version, manifest.version);
   assert.equal(manifest.default_locale, 'en');
   assert.equal(manifest.name, '__MSG_extName__');
@@ -95,7 +95,8 @@ test('manifest exposes the expected Chrome extension contract', () => {
   assert.equal(manifest.options_ui.page, 'options.html');
   assert.equal(manifest.background.service_worker, 'background.js');
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'notifications', 'storage'].sort());
-  assert.ok(manifest.host_permissions.includes('https://api.cloudflare.com/*'));
+  assert.deepEqual(manifest.host_permissions, ['https://api.cloudflare.com/*']);
+  assert.deepEqual(manifest.optional_host_permissions.sort(), ['http://*/*', 'https://*/*'].sort());
 
   [
     'popup.html',
@@ -107,6 +108,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
     'services.html',
     'schedule.html',
     'about.html',
+    'privacy.html',
     'release-notes.html',
     'i18n.js',
     'options.js',
@@ -154,6 +156,10 @@ test('HTML pages use local assets and keep required extension mount points', () 
       ids: ['about-settings', 'language-settings', 'localePreference', 'aboutVersion']
     },
     {
+      file: 'privacy.html',
+      ids: ['headerVersion']
+    },
+    {
       file: 'release-notes.html',
       ids: ['release-notes']
     }
@@ -171,6 +177,7 @@ test('HTML pages use local assets and keep required extension mount points', () 
 
     if (page.file !== 'popup.html') {
       assert.match(html, /class=["'][^"']*settings-nav-item/, `${page.file} should use the shared sidebar navigation`);
+      assert.match(html, /href=["']privacy\.html["']/, `${page.file} should link to Privacy Policy`);
       assert.match(html, /href=["']release-notes\.html["']/, `${page.file} should link to Release Notes`);
       assert.match(html, /href=["']https:\/\/thesignalwise\.com["']/, `${page.file} should link to the official website`);
       assert.match(html, /href=["']https:\/\/github\.com\/thesignalwise\/cloudflare-quota-monitor["']/, `${page.file} should link to GitHub`);
@@ -254,6 +261,33 @@ test('options page exposes API validation and capability checks', () => {
     'queueMessageOperationsAdaptiveGroups',
     'durableObjectsInvocationsAdaptiveGroups'
   ].forEach(dataset => assert.match(source, new RegExp(dataset), `missing API test for ${dataset}`));
+});
+
+test('privacy and release packaging surfaces are present', () => {
+  const manifest = readJson('manifest.json');
+  const packageJson = readJson('package.json');
+  const privacyHtml = readText('privacy.html');
+  const privacyMd = readText('PRIVACY.md');
+  const packageScript = readText('scripts/package-extension.mjs');
+
+  assert.equal(manifest.version, '0.3.3');
+  assert.equal(packageJson.scripts.package, 'node scripts/package-extension.mjs');
+  assert.match(privacyHtml, /Limited Use disclosure/);
+  assert.match(privacyMd, /Chrome Web Store User Data Policy/);
+  assert.match(packageScript, /privacy\.html/);
+  assert.doesNotMatch(packageScript, /\.env/);
+  assert.doesNotMatch(packageScript, /google-stitch/);
+});
+
+test('WebDAV backup requests runtime host permission and warns about secrets', () => {
+  const source = readText('options.js');
+  const html = readText('webdav.html');
+
+  assert.match(html, /Backup includes sensitive settings/);
+  assert.match(source, /ensureWebdavHostPermission/);
+  assert.match(source, /chrome\.permissions\[method\]/);
+  assert.match(source, /confirmSensitiveBackup/);
+  assert.match(source, /Cloudflare API token, account ID, WebDAV username, and WebDAV password/);
 });
 
 test('usage dashboard uses percentage-based risk colors', () => {

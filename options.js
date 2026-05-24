@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiCapabilityGridEl = document.getElementById('apiCapabilityGrid');
   const hasChromeStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
   const hasChromeRuntime = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
-  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.2' };
+  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.3' };
 
   const API_CAPABILITIES = [
     {
@@ -291,6 +291,53 @@ document.addEventListener('DOMContentLoaded', () => {
         path: getInputValue(webdavPathInput, webdav.path || '/cloudflare-quota-backup.json') || '/cloudflare-quota-backup.json'
       }
     };
+  }
+
+  function webdavTargetUrl(davUrl, davPath) {
+    const base = davUrl.endsWith('/') ? davUrl : `${davUrl}/`;
+    const path = davPath.replace(/^\/+/g, '');
+    return new URL(path, base).toString();
+  }
+
+  function optionalHostPattern(targetUrl) {
+    const url = new URL(targetUrl);
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('WebDAV URL must use HTTP or HTTPS.');
+    }
+    return `${url.origin}/*`;
+  }
+
+  function chromePermissionCall(method, payload) {
+    return new Promise(resolve => {
+      chrome.permissions[method](payload, value => resolve(Boolean(value)));
+    });
+  }
+
+  async function ensureWebdavHostPermission(targetUrl) {
+    if (typeof chrome === 'undefined' || !chrome.permissions) {
+      return;
+    }
+
+    const origins = [optionalHostPattern(targetUrl)];
+    const alreadyGranted = await chromePermissionCall('contains', { origins });
+    if (alreadyGranted) {
+      return;
+    }
+
+    const granted = await chromePermissionCall('request', { origins });
+    if (!granted) {
+      throw new Error('Chrome host permission was not granted for this WebDAV endpoint.');
+    }
+  }
+
+  function confirmSensitiveBackup() {
+    if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
+      return true;
+    }
+
+    return window.confirm(
+      'WebDAV backup uploads your Cloudflare API token, account ID, WebDAV username, and WebDAV password to the configured endpoint. Continue only if you trust this destination.'
+    );
   }
 
   function applySettings(settings) {
@@ -568,9 +615,12 @@ document.addEventListener('DOMContentLoaded', () => {
       throw new Error('Please fill WebDAV URL and path.');
     }
 
-    const base = settings.webdav.url.endsWith('/') ? settings.webdav.url : `${settings.webdav.url}/`;
-    const path = settings.webdav.path.replace(/^\/+/g, '');
-    const url = new URL(path, base).toString();
+    if (!confirmSensitiveBackup()) {
+      throw new Error('Backup cancelled.');
+    }
+
+    const url = webdavTargetUrl(settings.webdav.url, settings.webdav.path);
+    await ensureWebdavHostPermission(url);
     const headers = { 'Content-Type': 'application/json' };
 
     if (settings.webdav.username) {
@@ -596,9 +646,8 @@ document.addEventListener('DOMContentLoaded', () => {
       throw new Error('Please fill WebDAV URL and path.');
     }
 
-    const base = davUrl.endsWith('/') ? davUrl : `${davUrl}/`;
-    const path = davPath.replace(/^\/+/g, '');
-    const url = new URL(path, base).toString();
+    const url = webdavTargetUrl(davUrl, davPath);
+    await ensureWebdavHostPermission(url);
     const headers = {};
     const username = getInputValue(webdavUsernameInput);
     const password = getSecretValue(webdavPasswordInput);
