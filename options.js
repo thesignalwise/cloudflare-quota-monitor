@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiCapabilityGridEl = document.getElementById('apiCapabilityGrid');
   const hasChromeStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
   const hasChromeRuntime = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
-  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.2.0' };
+  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.0' };
 
   const API_CAPABILITIES = [
     {

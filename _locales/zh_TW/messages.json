@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "Cloudflare 免費額度監控"
+  },
+  "extShortName": {
+    "message": "額度監控"
+  },
+  "extDescription": {
+    "message": "監控 Cloudflare 免費方案在 Workers、Pages、KV、D1、R2、Durable Objects 及相關開發者產品中的額度使用。"
+  }
+}

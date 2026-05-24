@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "Cloudflare Free Quota Monitor"
+  },
+  "extShortName": {
+    "message": "Quota Monitor"
+  },
+  "extDescription": {
+    "message": "Monitors Cloudflare free-tier quotas across Workers, Pages, KV, D1, R2, Durable Objects and related developer products."
+  }
+}

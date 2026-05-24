@@ -86,8 +86,11 @@ test('manifest exposes the expected Chrome extension contract', () => {
   const packageJson = readJson('package.json');
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, '0.2.0');
+  assert.equal(manifest.version, '0.3.0');
   assert.equal(packageJson.version, manifest.version);
+  assert.equal(manifest.default_locale, 'en');
+  assert.equal(manifest.name, '__MSG_extName__');
+  assert.equal(manifest.description, '__MSG_extDescription__');
   assert.equal(manifest.action.default_popup, 'popup.html');
   assert.equal(manifest.options_ui.page, 'options.html');
   assert.equal(manifest.background.service_worker, 'background.js');
@@ -104,12 +107,19 @@ test('manifest exposes the expected Chrome extension contract', () => {
     'services.html',
     'schedule.html',
     'about.html',
+    'release-notes.html',
+    'i18n.js',
     'options.js',
     'background.js',
     'style.css',
     'icons/icon16.png',
     'icons/icon48.png',
-    'icons/icon128.png'
+    'icons/icon128.png',
+    '_locales/en/messages.json',
+    '_locales/zh_CN/messages.json',
+    '_locales/zh_TW/messages.json',
+    '_locales/ja/messages.json',
+    '_locales/ko/messages.json'
   ].forEach(assertFile);
 });
 
@@ -141,7 +151,11 @@ test('HTML pages use local assets and keep required extension mount points', () 
     },
     {
       file: 'about.html',
-      ids: ['about-settings', 'aboutVersion']
+      ids: ['about-settings', 'language-settings', 'localePreference', 'aboutVersion']
+    },
+    {
+      file: 'release-notes.html',
+      ids: ['release-notes']
     }
   ];
 
@@ -153,9 +167,11 @@ test('HTML pages use local assets and keep required extension mount points', () 
 
     assert.deepEqual(remoteScriptsOrStyles, [], `${page.file} should not load remote scripts or styles`);
     page.ids.forEach(id => assert.match(html, new RegExp(`id=["']${id}["']`), `${page.file} should include #${id}`));
+    assert.match(html, /<script src=["']i18n\.js["']><\/script>/, `${page.file} should load i18n.js`);
 
     if (page.file !== 'popup.html') {
       assert.match(html, /class=["'][^"']*settings-nav-item/, `${page.file} should use the shared sidebar navigation`);
+      assert.match(html, /href=["']release-notes\.html["']/, `${page.file} should link to Release Notes`);
       assert.match(html, /href=["']https:\/\/thesignalwise\.com["']/, `${page.file} should link to the official website`);
       assert.match(html, /href=["']https:\/\/github\.com\/thesignalwise\/cloudflare-quota-monitor["']/, `${page.file} should link to GitHub`);
     }
@@ -165,8 +181,21 @@ test('HTML pages use local assets and keep required extension mount points', () 
 });
 
 test('JavaScript files pass syntax checks', () => {
-  ['background.js', 'popup.js', 'dashboard.js', 'options.js'].forEach(file => {
+  ['background.js', 'popup.js', 'dashboard.js', 'options.js', 'i18n.js'].forEach(file => {
     execFileSync(process.execPath, ['--check', path.join(rootDir, file)], { stdio: 'pipe' });
+  });
+});
+
+test('i18n supports the required locales', () => {
+  const source = readText('i18n.js');
+  ['en', 'zh-CN', 'zh-TW', 'ja', 'ko'].forEach(locale => {
+    assert.match(source, new RegExp(`['"]${locale}['"]`), `missing runtime locale ${locale}`);
+  });
+
+  ['en', 'zh_CN', 'zh_TW', 'ja', 'ko'].forEach(locale => {
+    const messages = readJson(`_locales/${locale}/messages.json`);
+    assert.equal(typeof messages.extName.message, 'string');
+    assert.equal(typeof messages.extDescription.message, 'string');
   });
 });
 

@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "Cloudflare 무료 할당량 모니터"
+  },
+  "extShortName": {
+    "message": "Quota Monitor"
+  },
+  "extDescription": {
+    "message": "Workers, Pages, KV, D1, R2, Durable Objects 등 Cloudflare 개발자 제품의 무료 사용량을 모니터링합니다."
+  }
+}

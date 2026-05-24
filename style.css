@@ -1517,6 +1517,33 @@ svg {
   border-radius: var(--radius-md);
 }
 
+.release-list {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.release-list article {
+  padding: var(--space-md);
+  background: var(--surface-low);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+}
+
+.release-list strong {
+  display: block;
+  margin-bottom: var(--space-xs);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.release-list p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
 @media (max-width: 980px) {
   .dashboard-page {
     min-width: 0;

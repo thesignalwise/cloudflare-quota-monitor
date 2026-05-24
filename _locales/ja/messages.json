@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "Cloudflare 無料枠モニター"
+  },
+  "extShortName": {
+    "message": "Quota Monitor"
+  },
+  "extDescription": {
+    "message": "Workers、Pages、KV、D1、R2、Durable Objects などの Cloudflare 開発者製品の無料枠使用量を監視します。"
+  }
+}

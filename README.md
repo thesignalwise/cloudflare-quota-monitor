@@ -76,7 +76,8 @@ CLOUDFLARE_ACCOUNT_ID=replace_with_your_account_id
 
 - Popup: dense mini-card cockpit sorted by usage pressure. It highlights the highest percentage first, then shows critical/watch/tracked counters and compact metric cards.
 - Dashboard: now lives inside the same sidebar workspace as the other settings pages. It is grouped by Compute & Runtime, Storage & Databases, Messaging & Data Plane, and Analytics & Logs. Use the Cards/List toggle to switch between visual cards and a scan-friendly list.
-- Settings pages: each menu item is a separate page: `options.html`, `webdav.html`, `services.html`, `schedule.html`, `about.html`, and `dashboard.html`. Sidebar footer uses icon-only links for the official website and GitHub repository.
+- Settings pages: each menu item is a separate page: `options.html`, `webdav.html`, `services.html`, `schedule.html`, `about.html`, `dashboard.html`, and `release-notes.html`. Sidebar footer uses icon-only links for the official website and GitHub repository.
+- Internationalization: UI defaults to the browser language and supports Simplified Chinese, Traditional Chinese, English, Japanese, and Korean. A manual language selector is available on the About page.
 
 ## Install In Chrome
 
@@ -115,7 +116,9 @@ Cloudflare currently exposes Workers Logs ingestion bytes through GraphQL, but n
 - `webdav.html`: WebDAV backup and restore.
 - `services.html`: monitored service coverage.
 - `schedule.html`: refresh cadence.
-- `about.html`: logo, version, privacy, and API coverage notes.
+- `about.html`: logo, version, privacy, language, and API coverage notes.
+- `release-notes.html`: changelog and release notes.
+- `i18n.js`, `_locales/`: runtime page translations and Chrome extension metadata translations.
 - `options.js`: shared settings persistence for all settings pages.
 - `style.css`: shared Google Stitch-inspired light design system.
 - `tests/extension.test.js`: Node test runner checks.
