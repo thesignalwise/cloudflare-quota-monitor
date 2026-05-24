@@ -22,6 +22,12 @@
   --warning-soft: #fff1e4;
   --danger: #ba1a1a;
   --danger-soft: #ffdad6;
+  --risk-low: #0f6b49;
+  --risk-ready: #4f7f13;
+  --risk-watch: #b68000;
+  --risk-elevated: #cf5f00;
+  --risk-high: #f38020;
+  --risk-critical: #ba1a1a;
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05);
   --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.08);
   --radius-sm: 4px;
@@ -817,17 +823,17 @@ svg {
 .progress-inner {
   width: var(--progress, 0%);
   height: 100%;
-  background: var(--primary-hot);
+  background: var(--risk-color, var(--primary-hot));
   border-radius: inherit;
   transition: width 420ms ease;
 }
 
 .is-warning .progress-inner {
-  background: var(--primary);
+  background: var(--risk-color, var(--primary));
 }
 
 .is-danger .progress-inner {
-  background: var(--danger);
+  background: var(--risk-color, var(--danger));
 }
 
 /* Dashboard */
@@ -1327,6 +1333,57 @@ svg {
   border-radius: var(--radius-md);
 }
 
+.api-test-panel > summary {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  min-height: 34px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.api-test-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.api-test-panel > summary::before {
+  width: 16px;
+  height: 16px;
+  margin-right: var(--space-xs);
+  color: var(--primary);
+  content: ">";
+  transform: rotate(0deg);
+  transition: transform 160ms ease;
+}
+
+.api-test-panel[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.api-test-panel > summary span {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.api-test-panel > summary em {
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-test-panel:not([open]) {
+  padding-block: var(--space-sm);
+}
+
 .api-test-summary {
   display: flex;
   align-items: center;
@@ -1338,6 +1395,10 @@ svg {
   background: var(--surface-lowest);
   border: 1px solid var(--outline);
   border-radius: var(--radius-md);
+}
+
+.api-test-panel[open] .api-test-summary {
+  margin-top: var(--space-md);
 }
 
 .api-test-summary strong {

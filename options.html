@@ -14,7 +14,7 @@
         <img class="brand-logo" src="icons/icon48.png" alt="" />
         <div class="brand-copy">
           <h1 class="brand-title">Quota Monitor</h1>
-          <p class="brand-subtitle"><span id="sidebarVersion">v0.3.0</span> · Extension settings</p>
+          <p class="brand-subtitle"><span id="sidebarVersion">v0.3.1</span> · Extension settings</p>
         </div>
       </div>
       <nav class="settings-nav-list" aria-label="Settings sections">
@@ -82,7 +82,7 @@
         </div>
         <div class="heading-actions">
           <span class="summary-badge">Local Storage Only</span>
-          <span class="summary-badge" id="headerVersion">v0.3.0</span>
+          <span class="summary-badge" id="headerVersion">v0.3.1</span>
         </div>
       </section>
 
@@ -104,13 +104,6 @@
               <p class="field-hint">Find this on your Cloudflare dashboard overview page.</p>
             </div>
           </div>
-          <div class="api-test-panel">
-            <div id="apiTestSummary" class="api-test-summary" aria-live="polite">
-              <strong>API not tested</strong>
-              <span>Run a read-only check to validate this token, account access, and telemetry coverage.</span>
-            </div>
-            <div id="apiCapabilityGrid" class="api-capability-grid" aria-live="polite"></div>
-          </div>
           <div class="settings-actions">
             <button id="testApiBtn" class="btn btn--secondary" type="button">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -126,6 +119,17 @@
               <span>Save API Settings</span>
             </button>
           </div>
+          <details id="apiTestPanel" class="api-test-panel">
+            <summary>
+              <span>API test results</span>
+              <em id="apiTestPanelState">Not tested</em>
+            </summary>
+            <div id="apiTestSummary" class="api-test-summary" aria-live="polite">
+              <strong>API not tested</strong>
+              <span>Run a read-only check to validate this token, account access, and telemetry coverage.</span>
+            </div>
+            <div id="apiCapabilityGrid" class="api-capability-grid" aria-live="polite"></div>
+          </details>
           <div id="msg" class="message"></div>
         </section>
       </div>

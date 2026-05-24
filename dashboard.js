@@ -104,7 +104,18 @@ document.addEventListener('DOMContentLoaded', () => {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
-  function drawLineChart(canvas, values, maxValue, statusLevel) {
+  function riskColorForPercent(percent) {
+    if (!hasMetricValue(percent)) return cssVar('--risk-low') || cssVar('--success');
+    const value = Math.max(0, Number(percent));
+    if (value >= 0.95) return cssVar('--risk-critical') || cssVar('--danger');
+    if (value >= 0.8) return cssVar('--risk-high') || cssVar('--primary-hot');
+    if (value >= 0.6) return cssVar('--risk-elevated') || cssVar('--primary');
+    if (value >= 0.4) return cssVar('--risk-watch') || cssVar('--warning');
+    if (value >= 0.2) return cssVar('--risk-ready') || cssVar('--success');
+    return cssVar('--risk-low') || cssVar('--success');
+  }
+
+  function drawLineChart(canvas, values, maxValue, lineColor) {
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
@@ -119,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const series = Array.isArray(values) ? values.map(safeNumber) : [];
     const maxSeries = Math.max(...series, 0);
     const ceiling = Math.max(safeNumber(maxValue), maxSeries, 1);
-    const lineColor = statusLevel === 'danger' ? cssVar('--danger') : statusLevel === 'warning' ? cssVar('--primary') : cssVar('--primary-hot');
+    const strokeColor = lineColor || cssVar('--risk-low') || cssVar('--success');
 
     ctx.clearRect(0, 0, width, height);
     ctx.strokeStyle = cssVar('--outline');
@@ -143,8 +154,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, 'rgba(243, 128, 32, 0.18)');
-    gradient.addColorStop(1, 'rgba(243, 128, 32, 0)');
+    gradient.addColorStop(0, 'rgba(243, 128, 32, 0.16)');
+    gradient.addColorStop(1, 'rgba(15, 138, 95, 0)');
 
     ctx.beginPath();
     points.forEach((point, index) => {
@@ -162,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (index === 0) ctx.moveTo(point.x, point.y);
       else ctx.lineTo(point.x, point.y);
     });
-    ctx.strokeStyle = lineColor;
+    ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -171,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const latest = points[points.length - 1];
     ctx.beginPath();
     ctx.arc(latest.x, latest.y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = lineColor;
+    ctx.fillStyle = strokeColor;
     ctx.fill();
   }
 
@@ -249,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function createMetricCard(metric, historySeries) {
     const status = statusForPercent(metric.percent);
     const progress = progressPercent(metric.percent);
+    const riskColor = riskColorForPercent(metric.percent);
     const card = document.createElement('article');
     card.className = `dashboard-card is-${status.level}`;
     card.innerHTML = `
@@ -265,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <p class="dashboard-value">${escapeHtml(formatUsed(metric))}</p>
       <p class="dashboard-meta">Used / ${escapeHtml(formatLimit(metric))}</p>
       <div class="progress" aria-label="${escapeHtml(metric.title)} usage ${progress}%">
-        <div class="progress-inner" style="--progress: ${progress}%"></div>
+        <div class="progress-inner" style="--progress: ${progress}%; --risk-color: ${escapeHtml(riskColor)}"></div>
       </div>
       <div class="chart-container">
         <canvas aria-label="${escapeHtml(metric.title)} trend chart"></canvas>
@@ -275,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(() => {
       const canvas = card.querySelector('canvas');
       const values = historySeries[metric.key]?.length ? historySeries[metric.key] : [safeNumber(metric.used)];
-      drawLineChart(canvas, values, metric.limit, status.level);
+      drawLineChart(canvas, values, metric.limit, riskColor);
     });
 
     return card;
@@ -284,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function createMetricListRow(metric) {
     const status = statusForPercent(metric.percent);
     const progress = progressPercent(metric.percent);
+    const riskColor = riskColorForPercent(metric.percent);
     const row = document.createElement('article');
     row.className = `dashboard-list-row is-${status.level}`;
     row.innerHTML = `
@@ -298,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <span>/${escapeHtml(formatLimit(metric))}</span>
       <span class="status-badge is-${status.level}">${escapeHtml(metricPercentLabel(metric))}</span>
       <div class="progress" aria-label="${escapeHtml(metric.title)} usage ${progress}%">
-        <div class="progress-inner" style="--progress: ${progress}%"></div>
+        <div class="progress-inner" style="--progress: ${progress}%; --risk-color: ${escapeHtml(riskColor)}"></div>
       </div>
     `;
     return row;

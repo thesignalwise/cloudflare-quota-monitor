@@ -86,7 +86,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
   const packageJson = readJson('package.json');
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, '0.3.0');
+  assert.equal(manifest.version, '0.3.1');
   assert.equal(packageJson.version, manifest.version);
   assert.equal(manifest.default_locale, 'en');
   assert.equal(manifest.name, '__MSG_extName__');
@@ -135,7 +135,7 @@ test('HTML pages use local assets and keep required extension mount points', () 
     },
     {
       file: 'options.html',
-      ids: ['apiToken', 'accountId', 'saveBtn', 'testApiBtn', 'apiTestSummary', 'apiCapabilityGrid', 'msg']
+      ids: ['apiToken', 'accountId', 'saveBtn', 'testApiBtn', 'apiTestPanel', 'apiTestPanelState', 'apiTestSummary', 'apiCapabilityGrid', 'msg']
     },
     {
       file: 'webdav.html',
@@ -239,6 +239,8 @@ test('options page exposes API validation and capability checks', () => {
   const source = readText('options.js');
 
   assert.match(html, /id=["']testApiBtn["']/, 'API page should include a test button');
+  assert.match(html, /<details id=["']apiTestPanel["'] class=["']api-test-panel["']>/, 'API test results should be collapsed by default');
+  assert.match(source, /apiTestPanelEl\.open = true/, 'API test results should expand after running a test');
   assert.match(source, /verifyToken/);
   assert.match(source, /verifyAccountAccess/);
   [
@@ -249,6 +251,17 @@ test('options page exposes API validation and capability checks', () => {
     'queueMessageOperationsAdaptiveGroups',
     'durableObjectsInvocationsAdaptiveGroups'
   ].forEach(dataset => assert.match(source, new RegExp(dataset), `missing API test for ${dataset}`));
+});
+
+test('usage dashboard uses percentage-based risk colors', () => {
+  const source = readText('dashboard.js');
+  const css = readText('style.css');
+
+  assert.match(source, /function riskColorForPercent/, 'dashboard should map usage percentage to a risk color');
+  assert.match(source, /--risk-color:\s*\$\{escapeHtml\(riskColor\)\}/, 'dashboard progress bars should receive metric-specific colors');
+  ['--risk-low', '--risk-ready', '--risk-watch', '--risk-elevated', '--risk-high', '--risk-critical'].forEach(token => {
+    assert.match(css, new RegExp(token), `missing CSS risk token ${token}`);
+  });
 });
 
 test('Cloudflare token verifies and can see the configured account', async t => {

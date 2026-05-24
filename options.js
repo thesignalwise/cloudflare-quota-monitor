@@ -13,11 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const backupBtn = document.getElementById('backupBtn');
   const restoreBtn = document.getElementById('restoreBtn');
   const msgEl = document.getElementById('msg');
+  const apiTestPanelEl = document.getElementById('apiTestPanel');
+  const apiTestPanelStateEl = document.getElementById('apiTestPanelState');
   const apiTestSummaryEl = document.getElementById('apiTestSummary');
   const apiCapabilityGridEl = document.getElementById('apiCapabilityGrid');
   const hasChromeStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
   const hasChromeRuntime = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
-  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.0' };
+  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.1' };
 
   const API_CAPABILITIES = [
     {
@@ -447,6 +449,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderApiTestSummary(status, title, detail) {
     if (!apiTestSummaryEl) return;
+    if (apiTestPanelStateEl) {
+      apiTestPanelStateEl.textContent = title;
+    }
     apiTestSummaryEl.className = `api-test-summary is-${status}`;
     apiTestSummaryEl.innerHTML = `
       <strong>${escapeHtml(title)}</strong>
@@ -509,6 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function runApiTest() {
     const token = getSecretValue(apiTokenInput).trim();
     const accountId = getInputValue(accountIdInput);
+    if (apiTestPanelEl) apiTestPanelEl.open = true;
 
     if (!token || !accountId) {
       renderApiTestSummary('error', 'Missing credentials', 'Enter both Cloudflare API token and account ID before testing.');
