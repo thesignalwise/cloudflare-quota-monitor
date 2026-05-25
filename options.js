@@ -1,17 +1,14 @@
 // options.js
-// Handles loading and saving settings as well as WebDAV backup/restore.
+// Handles loading, saving, testing, and local config import/export.
 
 document.addEventListener('DOMContentLoaded', () => {
   const apiTokenInput = document.getElementById('apiToken');
   const accountIdInput = document.getElementById('accountId');
-  const webdavUrlInput = document.getElementById('webdavUrl');
-  const webdavUsernameInput = document.getElementById('webdavUsername');
-  const webdavPasswordInput = document.getElementById('webdavPassword');
-  const webdavPathInput = document.getElementById('webdavPath');
   const saveBtn = document.getElementById('saveBtn');
   const testApiBtn = document.getElementById('testApiBtn');
-  const backupBtn = document.getElementById('backupBtn');
-  const restoreBtn = document.getElementById('restoreBtn');
+  const exportConfigBtn = document.getElementById('exportConfigBtn');
+  const importConfigBtn = document.getElementById('importConfigBtn');
+  const configFileInput = document.getElementById('configFileInput');
   const msgEl = document.getElementById('msg');
   const apiTestPanelEl = document.getElementById('apiTestPanel');
   const apiTestPanelStateEl = document.getElementById('apiTestPanelState');
@@ -19,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiCapabilityGridEl = document.getElementById('apiCapabilityGrid');
   const hasChromeStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
   const hasChromeRuntime = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
-  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.3' };
+  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.4' };
 
   const API_CAPABILITIES = [
     {
@@ -280,74 +277,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function currentSettings(existing = {}) {
-    const webdav = existing.webdav || {};
     return {
       apiToken: getInputValue(apiTokenInput, existing.apiToken || ''),
-      accountId: getInputValue(accountIdInput, existing.accountId || ''),
-      webdav: {
-        url: getInputValue(webdavUrlInput, webdav.url || ''),
-        username: getInputValue(webdavUsernameInput, webdav.username || ''),
-        password: getSecretValue(webdavPasswordInput, webdav.password || ''),
-        path: getInputValue(webdavPathInput, webdav.path || '/cloudflare-quota-backup.json') || '/cloudflare-quota-backup.json'
-      }
+      accountId: getInputValue(accountIdInput, existing.accountId || '')
     };
-  }
-
-  function webdavTargetUrl(davUrl, davPath) {
-    const base = davUrl.endsWith('/') ? davUrl : `${davUrl}/`;
-    const path = davPath.replace(/^\/+/g, '');
-    return new URL(path, base).toString();
-  }
-
-  function optionalHostPattern(targetUrl) {
-    const url = new URL(targetUrl);
-    if (!['http:', 'https:'].includes(url.protocol)) {
-      throw new Error('WebDAV URL must use HTTP or HTTPS.');
-    }
-    return `${url.origin}/*`;
-  }
-
-  function chromePermissionCall(method, payload) {
-    return new Promise(resolve => {
-      chrome.permissions[method](payload, value => resolve(Boolean(value)));
-    });
-  }
-
-  async function ensureWebdavHostPermission(targetUrl) {
-    if (typeof chrome === 'undefined' || !chrome.permissions) {
-      return;
-    }
-
-    const origins = [optionalHostPattern(targetUrl)];
-    const alreadyGranted = await chromePermissionCall('contains', { origins });
-    if (alreadyGranted) {
-      return;
-    }
-
-    const granted = await chromePermissionCall('request', { origins });
-    if (!granted) {
-      throw new Error('Chrome host permission was not granted for this WebDAV endpoint.');
-    }
-  }
-
-  function confirmSensitiveBackup() {
-    if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
-      return true;
-    }
-
-    return window.confirm(
-      'WebDAV backup uploads your Cloudflare API token, account ID, WebDAV username, and WebDAV password to the configured endpoint. Continue only if you trust this destination.'
-    );
   }
 
   function applySettings(settings) {
     const data = settings || {};
     if (apiTokenInput) apiTokenInput.value = data.apiToken || '';
     if (accountIdInput) accountIdInput.value = data.accountId || '';
-    if (webdavUrlInput) webdavUrlInput.value = data.webdav?.url || '';
-    if (webdavUsernameInput) webdavUsernameInput.value = data.webdav?.username || '';
-    if (webdavPasswordInput) webdavPasswordInput.value = data.webdav?.password || '';
-    if (webdavPathInput) webdavPathInput.value = data.webdav?.path || '/cloudflare-quota-backup.json';
   }
 
   function loadStoredSettings(callback) {
@@ -375,6 +314,105 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadSettings() {
     loadStoredSettings(settings => applySettings(settings));
+  }
+
+  function sanitizeSettings(settings = {}) {
+    return {
+      apiToken: typeof settings.apiToken === 'string' ? settings.apiToken : '',
+      accountId: typeof settings.accountId === 'string' ? settings.accountId : ''
+    };
+  }
+
+  function storageGet(keys) {
+    return new Promise(resolve => {
+      if (hasChromeStorage) {
+        chrome.storage.local.get(keys, resolve);
+        return;
+      }
+
+      const result = {};
+      keys.forEach(key => {
+        if (key === 'settings') {
+          try {
+            result.settings = JSON.parse(localStorage.getItem('quotaMonitorSettings') || '{}');
+          } catch (err) {
+            result.settings = {};
+          }
+        } else {
+          result[key] = localStorage.getItem(key) || undefined;
+        }
+      });
+      resolve(result);
+    });
+  }
+
+  function storageSet(values) {
+    return new Promise(resolve => {
+      if (hasChromeStorage) {
+        chrome.storage.local.set(values, resolve);
+        return;
+      }
+
+      Object.entries(values).forEach(([key, value]) => {
+        if (key === 'settings') {
+          localStorage.setItem('quotaMonitorSettings', JSON.stringify(value));
+        } else if (value === undefined || value === null) {
+          localStorage.removeItem(key);
+        } else {
+          localStorage.setItem(key, String(value));
+        }
+      });
+      resolve();
+    });
+  }
+
+  function downloadJson(fileName, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.rel = 'noopener';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function exportConfig() {
+    const result = await storageGet(['settings', 'localePreference']);
+    const payload = {
+      schemaVersion: 1,
+      app: 'cloudflare-quota-monitor',
+      exportedAt: new Date().toISOString(),
+      settings: sanitizeSettings(result.settings || {}),
+      localePreference: result.localePreference || 'auto'
+    };
+    downloadJson(`cloudflare-quota-monitor-config-${new Date().toISOString().slice(0, 10)}.json`, payload);
+  }
+
+  function parseConfigPayload(text) {
+    const payload = JSON.parse(text);
+    const settings = sanitizeSettings(payload.settings || payload);
+    const localePreference = payload.localePreference || 'auto';
+    if (!settings.apiToken && !settings.accountId) {
+      throw new Error('This file does not contain Cloudflare Quota Monitor settings.');
+    }
+    return { settings, localePreference };
+  }
+
+  async function importConfig(file) {
+    if (!file) {
+      throw new Error('Choose a JSON configuration file first.');
+    }
+
+    const text = await file.text();
+    const { settings, localePreference } = parseConfigPayload(text);
+    await storageSet({ settings, localePreference });
+    applySettings(settings);
+    if (hasChromeRuntime) {
+      chrome.runtime.sendMessage({ action: 'refreshQuotas' });
+    }
   }
 
   function getUtcDayRange() {
@@ -609,65 +647,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  async function backupSettings() {
-    const settings = currentSettings();
-    if (!settings.webdav.url || !settings.webdav.path) {
-      throw new Error('Please fill WebDAV URL and path.');
-    }
-
-    if (!confirmSensitiveBackup()) {
-      throw new Error('Backup cancelled.');
-    }
-
-    const url = webdavTargetUrl(settings.webdav.url, settings.webdav.path);
-    await ensureWebdavHostPermission(url);
-    const headers = { 'Content-Type': 'application/json' };
-
-    if (settings.webdav.username) {
-      const credentials = `${settings.webdav.username}:${settings.webdav.password || ''}`;
-      headers.Authorization = `Basic ${btoa(credentials)}`;
-    }
-
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(settings)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Backup failed: ${response.status} ${response.statusText}`);
-    }
-  }
-
-  async function restoreSettings() {
-    const davUrl = getInputValue(webdavUrlInput);
-    const davPath = getInputValue(webdavPathInput, '/cloudflare-quota-backup.json') || '/cloudflare-quota-backup.json';
-    if (!davUrl || !davPath) {
-      throw new Error('Please fill WebDAV URL and path.');
-    }
-
-    const url = webdavTargetUrl(davUrl, davPath);
-    await ensureWebdavHostPermission(url);
-    const headers = {};
-    const username = getInputValue(webdavUsernameInput);
-    const password = getSecretValue(webdavPasswordInput);
-
-    if (username) {
-      headers.Authorization = `Basic ${btoa(`${username}:${password || ''}`)}`;
-    }
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers
-    });
-
-    if (!response.ok) {
-      throw new Error(`Restore failed: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
-  }
-
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
       try {
@@ -685,32 +664,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (backupBtn) {
-    backupBtn.addEventListener('click', () => {
-      backupBtn.disabled = true;
-      showMessage('Backing up...');
-      backupSettings().then(() => {
-        showMessage('Backup successful.', 'is-success');
+  if (exportConfigBtn) {
+    exportConfigBtn.addEventListener('click', () => {
+      exportConfigBtn.disabled = true;
+      showMessage('Exporting configuration...');
+      exportConfig().then(() => {
+        showMessage('Configuration exported.', 'is-success');
       }).catch(err => {
         showMessage(err.message, 'is-error');
       }).finally(() => {
-        backupBtn.disabled = false;
+        exportConfigBtn.disabled = false;
       });
     });
   }
 
-  if (restoreBtn) {
-    restoreBtn.addEventListener('click', () => {
-      restoreBtn.disabled = true;
-      showMessage('Restoring...');
-      restoreSettings().then(obj => {
-        applySettings(obj);
-        saveSettings();
-        showMessage('Restore successful.', 'is-success');
+  if (importConfigBtn && configFileInput) {
+    importConfigBtn.addEventListener('click', () => {
+      configFileInput.click();
+    });
+
+    configFileInput.addEventListener('change', () => {
+      const [file] = configFileInput.files || [];
+      importConfigBtn.disabled = true;
+      showMessage('Importing configuration...');
+      importConfig(file).then(() => {
+        showMessage('Configuration imported.', 'is-success');
       }).catch(err => {
         showMessage(err.message, 'is-error');
       }).finally(() => {
-        restoreBtn.disabled = false;
+        importConfigBtn.disabled = false;
+        configFileInput.value = '';
       });
     });
   }

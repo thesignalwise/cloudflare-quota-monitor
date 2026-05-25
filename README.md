@@ -1,6 +1,6 @@
 # Cloudflare Free Quota Monitor
 
-Chrome MV3 extension for monitoring Cloudflare free-tier usage from a compact popup and a unified settings workspace for dashboard, credentials, backup, privacy, service coverage, schedule, and About information.
+Chrome MV3 extension for monitoring Cloudflare free-tier usage from a compact popup and a unified settings workspace for dashboard, credentials, local config import/export, privacy, service coverage, schedule, and About information.
 
 The UI follows the Google Stitch "Professional Modern Light" direction included in `google-stitch/`: white and light gray surfaces, Cloudflare orange accents, compact cards, and dense operational data.
 
@@ -53,7 +53,7 @@ Create a Cloudflare API token with read-only access for the products you want to
 - User Details: Read
 - Memberships: Read
 
-The token and account ID are stored in `chrome.storage.local` by the extension. WebDAV backup is optional and includes sensitive settings when the user explicitly runs backup. Local integration tests read credentials from `.env`.
+The token and account ID are stored in `chrome.storage.local` by the extension. Local config export is optional and downloads a JSON file that includes sensitive settings. Local integration tests read credentials from `.env`.
 
 ## Privacy And Permissions
 
@@ -66,15 +66,13 @@ Default permissions:
 - `notifications`: notify quota risk when applicable.
 - `https://api.cloudflare.com/*`: verify tokens and read Cloudflare telemetry.
 
-Optional permissions:
-
-- `http://*/*` and `https://*/*` are declared only as optional host permissions. They are requested at runtime for the exact WebDAV origin configured by the user.
+No broad optional host permissions are requested for backup. Configuration import/export is local file based.
 
 Privacy surfaces:
 
 - `privacy.html`: extension-bundled privacy policy and Limited Use disclosure.
 - `PRIVACY.md`: website-ready privacy policy text for publishing on an external page.
-- `webdav.html`: visible warning that backup uploads API token, account ID, WebDAV username, and WebDAV password to the configured endpoint.
+- `webdav.html`: local JSON import/export with a visible warning that exported files contain the API token and account ID.
 
 ## Local Environment
 
@@ -142,7 +140,7 @@ Cloudflare currently exposes Workers Logs ingestion bytes through GraphQL, but n
 - `popup.html`, `popup.js`: high-density popup cockpit with attention-first mini cards.
 - `dashboard.html`, `dashboard.js`: sidebar-integrated grouped dashboard with card and list modes.
 - `options.html`: Cloudflare API credentials.
-- `webdav.html`: WebDAV backup and restore.
+- `webdav.html`: local configuration import and export.
 - `services.html`: monitored service coverage.
 - `schedule.html`: refresh cadence.
 - `about.html`: logo, version, privacy, language, and API coverage notes.

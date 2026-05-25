@@ -86,7 +86,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
   const packageJson = readJson('package.json');
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, '0.3.3');
+  assert.equal(manifest.version, '0.3.4');
   assert.equal(packageJson.version, manifest.version);
   assert.equal(manifest.default_locale, 'en');
   assert.equal(manifest.name, '__MSG_extName__');
@@ -96,7 +96,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
   assert.equal(manifest.background.service_worker, 'background.js');
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'notifications', 'storage'].sort());
   assert.deepEqual(manifest.host_permissions, ['https://api.cloudflare.com/*']);
-  assert.deepEqual(manifest.optional_host_permissions.sort(), ['http://*/*', 'https://*/*'].sort());
+  assert.equal(manifest.optional_host_permissions, undefined);
 
   [
     'popup.html',
@@ -141,7 +141,7 @@ test('HTML pages use local assets and keep required extension mount points', () 
     },
     {
       file: 'webdav.html',
-      ids: ['webdavUrl', 'webdavUsername', 'webdavPassword', 'webdavPath', 'saveBtn', 'backupBtn', 'restoreBtn', 'msg']
+      ids: ['config-file-settings', 'configFileInput', 'exportConfigBtn', 'importConfigBtn', 'msg']
     },
     {
       file: 'services.html',
@@ -270,7 +270,7 @@ test('privacy and release packaging surfaces are present', () => {
   const privacyMd = readText('PRIVACY.md');
   const packageScript = readText('scripts/package-extension.mjs');
 
-  assert.equal(manifest.version, '0.3.3');
+  assert.equal(manifest.version, '0.3.4');
   assert.equal(packageJson.scripts.package, 'node scripts/package-extension.mjs');
   assert.match(privacyHtml, /Limited Use disclosure/);
   assert.match(privacyMd, /Chrome Web Store User Data Policy/);
@@ -279,15 +279,21 @@ test('privacy and release packaging surfaces are present', () => {
   assert.doesNotMatch(packageScript, /google-stitch/);
 });
 
-test('WebDAV backup requests runtime host permission and warns about secrets', () => {
+test('configuration import/export stays local and avoids broad host permissions', () => {
+  const manifest = readJson('manifest.json');
   const source = readText('options.js');
   const html = readText('webdav.html');
 
-  assert.match(html, /Backup includes sensitive settings/);
-  assert.match(source, /ensureWebdavHostPermission/);
-  assert.match(source, /chrome\.permissions\[method\]/);
-  assert.match(source, /confirmSensitiveBackup/);
-  assert.match(source, /Cloudflare API token, account ID, WebDAV username, and WebDAV password/);
+  assert.equal(manifest.optional_host_permissions, undefined);
+  assert.match(html, /Exported files include sensitive settings/);
+  assert.match(html, /No network permission/);
+  assert.match(source, /exportConfig/);
+  assert.match(source, /importConfig/);
+  assert.match(source, /downloadJson/);
+  assert.doesNotMatch(source, /chrome\.permissions/);
+  assert.doesNotMatch(source, /ensureWebdavHostPermission/);
+  assert.doesNotMatch(source, /method:\s*'PUT'/);
+  assert.doesNotMatch(source, /Basic \$\{btoa/);
 });
 
 test('usage dashboard uses percentage-based risk colors', () => {
