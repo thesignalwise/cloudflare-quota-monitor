@@ -1,6 +1,6 @@
 {
   "name": "cloudflare-quota-monitor",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "private": true,
   "description": "Automated checks for the Cloudflare Free Quota Monitor extension.",
   "scripts": {

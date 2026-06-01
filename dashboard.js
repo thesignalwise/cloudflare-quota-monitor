@@ -8,12 +8,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const cardViewBtn = document.getElementById('cardViewBtn');
   const listViewBtn = document.getElementById('listViewBtn');
   const dashboardSummary = document.getElementById('dashboardSummary');
+  const refreshStatusEl = document.getElementById('dashboardRefreshStatus');
+  const refreshStatusTitle = document.getElementById('dashboardRefreshTitle');
+  const refreshStatusDetail = document.getElementById('dashboardRefreshDetail');
+  const refreshProgress = document.getElementById('dashboardRefreshProgress');
+  const chartModal = document.getElementById('chartModal');
+  const chartModalClose = document.getElementById('chartModalClose');
+  const chartModalCanvas = document.getElementById('chartModalCanvas');
+  const chartModalTitle = document.getElementById('chartModalTitle');
+  const chartModalMeta = document.getElementById('chartModalMeta');
+  const chartModalPercent = document.getElementById('chartModalPercent');
+  const chartModalLatest = document.getElementById('chartModalLatest');
+  const chartModalLow = document.getElementById('chartModalLow');
+  const chartModalHigh = document.getElementById('chartModalHigh');
   const hasChromeStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
   const hasChromeRuntime = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
 
   let currentView = localStorage.getItem('quotaDashboardView') || 'cards';
   let lastQuotas = null;
   let lastHistory = [];
+  let activeChartKey = null;
+  let refreshProgressTimer = null;
+  let refreshCompleteTimer = null;
 
   const GROUPS = [
     { id: 'compute', title: 'Compute & Runtime' },
@@ -115,7 +131,22 @@ document.addEventListener('DOMContentLoaded', () => {
     return cssVar('--risk-low') || cssVar('--success');
   }
 
-  function drawLineChart(canvas, values, maxValue, lineColor) {
+  function chartScale(series, maxValue, adaptiveScale) {
+    const maxSeries = Math.max(...series, 0);
+    if (!adaptiveScale) {
+      return { min: 0, max: Math.max(safeNumber(maxValue), maxSeries, 1) };
+    }
+
+    const minSeries = Math.min(...series);
+    const spread = Math.max(maxSeries - minSeries, Math.abs(maxSeries) * 0.08, 1);
+    return {
+      min: Math.max(0, minSeries - spread),
+      max: Math.max(maxSeries + spread, 1)
+    };
+  }
+
+  function drawLineChart(canvas, values, maxValue, lineColor, options = {}) {
+    if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
@@ -128,8 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const width = rect.width;
     const height = rect.height;
     const series = Array.isArray(values) ? values.map(safeNumber) : [];
-    const maxSeries = Math.max(...series, 0);
-    const ceiling = Math.max(safeNumber(maxValue), maxSeries, 1);
+    const scale = series.length ? chartScale(series, maxValue, options.adaptiveScale) : { min: 0, max: 1 };
+    const range = Math.max(scale.max - scale.min, 1);
     const strokeColor = lineColor || cssVar('--risk-low') || cssVar('--success');
 
     ctx.clearRect(0, 0, width, height);
@@ -149,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const points = series.map((value, index) => {
       const x = series.length === 1 ? width / 2 : (index / (series.length - 1)) * width;
-      const y = height - 5 - (value / ceiling) * (height - 12);
+      const y = height - 5 - ((value - scale.min) / range) * (height - 12);
       return { x, y };
     });
 
@@ -257,6 +288,54 @@ document.addEventListener('DOMContentLoaded', () => {
     return percent === null ? 'Info' : `${percent}%`;
   }
 
+  function formatMetricValue(metric, value) {
+    return metric.format === 'bytes' ? formatBytes(value) : formatNumber(value);
+  }
+
+  function historyValuesForMetric(metric) {
+    const historySeries = buildHistorySeries(lastHistory);
+    return historySeries[metric.key]?.length ? historySeries[metric.key] : [safeNumber(metric.used)];
+  }
+
+  function openChartModal(metricKey) {
+    if (!chartModal || !chartModalCanvas) return;
+    const metric = buildMetricDefinitions(lastQuotas || DEMO_QUOTAS).find(item => item.key === metricKey);
+    if (!metric) return;
+
+    activeChartKey = metricKey;
+    const values = historyValuesForMetric(metric);
+    const latest = values[values.length - 1] || safeNumber(metric.used);
+    const low = Math.min(...values, latest);
+    const high = Math.max(...values, latest);
+    const status = statusForPercent(metric.percent);
+    const riskColor = riskColorForPercent(metric.percent);
+
+    if (chartModalTitle) chartModalTitle.textContent = metric.title;
+    if (chartModalMeta) {
+      chartModalMeta.textContent = `${metric.period} trend across ${values.length} stored sample${values.length === 1 ? '' : 's'}. Adaptive scale emphasizes movement; quota risk stays on the card percent.`;
+    }
+    if (chartModalPercent) {
+      chartModalPercent.textContent = metricPercentLabel(metric);
+      chartModalPercent.className = `status-badge is-${status.level}`;
+    }
+    if (chartModalLatest) chartModalLatest.textContent = formatMetricValue(metric, latest);
+    if (chartModalLow) chartModalLow.textContent = formatMetricValue(metric, low);
+    if (chartModalHigh) chartModalHigh.textContent = formatMetricValue(metric, high);
+
+    chartModal.hidden = false;
+    document.body.classList.add('is-modal-open');
+    requestAnimationFrame(() => {
+      drawLineChart(chartModalCanvas, values, metric.limit, riskColor, { adaptiveScale: true });
+    });
+  }
+
+  function closeChartModal() {
+    if (!chartModal) return;
+    chartModal.hidden = true;
+    activeChartKey = null;
+    document.body.classList.remove('is-modal-open');
+  }
+
   function createMetricCard(metric, historySeries) {
     const status = statusForPercent(metric.percent);
     const progress = progressPercent(metric.percent);
@@ -279,15 +358,20 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="progress" aria-label="${escapeHtml(metric.title)} usage ${progress}%">
         <div class="progress-inner" style="--progress: ${progress}%; --risk-color: ${escapeHtml(riskColor)}"></div>
       </div>
-      <div class="chart-container">
+      <div class="chart-container" data-chart-key="${escapeHtml(metric.key)}" role="button" tabindex="0" aria-label="Open enlarged ${escapeHtml(metric.title)} trend chart" title="Open enlarged trend chart">
         <canvas aria-label="${escapeHtml(metric.title)} trend chart"></canvas>
+        <span class="chart-expand" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none">
+            <path d="M9 5H5v4M15 5h4v4M19 15v4h-4M5 15v4h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
       </div>
     `;
 
     requestAnimationFrame(() => {
       const canvas = card.querySelector('canvas');
       const values = historySeries[metric.key]?.length ? historySeries[metric.key] : [safeNumber(metric.used)];
-      drawLineChart(canvas, values, metric.limit, riskColor);
+      drawLineChart(canvas, values, metric.limit, riskColor, { adaptiveScale: true });
     });
 
     return card;
@@ -354,6 +438,63 @@ document.addEventListener('DOMContentLoaded', () => {
     contentEl.className = `dashboard-content is-${isList ? 'list' : 'card'}-view`;
   }
 
+  function setRefreshButtonState(isRefreshing) {
+    refreshBtn.disabled = isRefreshing;
+    refreshBtn.classList.toggle('is-syncing', isRefreshing);
+    refreshBtn.setAttribute('aria-busy', String(isRefreshing));
+    if (refreshLabel) refreshLabel.textContent = isRefreshing ? 'Syncing...' : 'Refresh';
+  }
+
+  function setRefreshStatus(state, title, detail, progress) {
+    if (!refreshStatusEl) return;
+    refreshStatusEl.hidden = false;
+    refreshStatusEl.className = `dashboard-refresh-status is-${state}`;
+    if (refreshStatusTitle) refreshStatusTitle.textContent = title;
+    if (refreshStatusDetail) refreshStatusDetail.textContent = detail;
+    if (refreshProgress) refreshProgress.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+  }
+
+  function stopRefreshProgress() {
+    if (refreshProgressTimer) {
+      clearInterval(refreshProgressTimer);
+      refreshProgressTimer = null;
+    }
+    if (refreshCompleteTimer) {
+      clearTimeout(refreshCompleteTimer);
+      refreshCompleteTimer = null;
+    }
+  }
+
+  function startRefreshProgress() {
+    stopRefreshProgress();
+    const steps = [
+      { title: 'Connecting to Cloudflare', detail: 'Sending a read-only telemetry request.', progress: 16 },
+      { title: 'Reading usage metrics', detail: 'Checking quota surfaces across enabled services.', progress: 42 },
+      { title: 'Updating local cache', detail: 'Writing the latest quota snapshot and today history sample.', progress: 68 },
+      { title: 'Rendering dashboard', detail: 'Preparing updated cards, list rows, and charts.', progress: 86 }
+    ];
+    let index = 0;
+    setRefreshStatus('active', steps[0].title, steps[0].detail, steps[0].progress);
+    dashboardSummary.textContent = 'Refresh in progress';
+
+    refreshProgressTimer = setInterval(() => {
+      index = Math.min(index + 1, steps.length - 1);
+      const step = steps[index];
+      setRefreshStatus('active', step.title, step.detail, step.progress);
+    }, 1100);
+  }
+
+  function finishRefreshProgress(success, detail) {
+    stopRefreshProgress();
+    const title = success ? 'Refresh complete' : 'Refresh failed';
+    const state = success ? 'success' : 'error';
+    setRefreshStatus(state, title, detail, success ? 100 : 100);
+    dashboardSummary.textContent = success ? 'Updated just now' : 'Refresh failed';
+    refreshCompleteTimer = setTimeout(() => {
+      if (refreshStatusEl) refreshStatusEl.hidden = true;
+    }, success ? 4200 : 7000);
+  }
+
   function renderEmpty() {
     contentEl.innerHTML = '';
     const empty = document.createElement('div');
@@ -415,22 +556,57 @@ document.addEventListener('DOMContentLoaded', () => {
   cardViewBtn.addEventListener('click', () => setViewMode('cards'));
   listViewBtn.addEventListener('click', () => setViewMode('list'));
 
+  contentEl.addEventListener('click', event => {
+    const target = event.target.closest('[data-chart-key]');
+    if (target) openChartModal(target.dataset.chartKey);
+  });
+
+  contentEl.addEventListener('keydown', event => {
+    const target = event.target.closest('[data-chart-key]');
+    if (!target || !['Enter', ' '].includes(event.key)) return;
+    event.preventDefault();
+    openChartModal(target.dataset.chartKey);
+  });
+
+  if (chartModalClose) {
+    chartModalClose.addEventListener('click', closeChartModal);
+  }
+
+  if (chartModal) {
+    chartModal.addEventListener('click', event => {
+      if (event.target.matches('[data-chart-modal-close]')) closeChartModal();
+    });
+  }
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && chartModal && !chartModal.hidden) closeChartModal();
+  });
+
   refreshBtn.addEventListener('click', () => {
     if (!hasChromeRuntime) {
+      setRefreshStatus('success', 'Demo data refreshed', 'Rendered local demo quota data.', 100);
       loadAndRender();
       return;
     }
 
-    refreshBtn.disabled = true;
-    if (refreshLabel) refreshLabel.textContent = 'Refreshing...';
-    chrome.runtime.sendMessage({ action: 'refreshQuotas' }, () => {
+    setRefreshButtonState(true);
+    startRefreshProgress();
+    chrome.runtime.sendMessage({ action: 'refreshQuotas', source: 'dashboard' }, () => {
       loadAndRender();
-      refreshBtn.disabled = false;
-      if (refreshLabel) refreshLabel.textContent = 'Refresh now';
+      setRefreshButtonState(false);
+      const lastError = chrome.runtime.lastError;
+      if (lastError) {
+        finishRefreshProgress(false, lastError.message || 'Cloudflare data could not be refreshed.');
+        return;
+      }
+      finishRefreshProgress(true, 'Latest Cloudflare usage data is cached and visible.');
     });
   });
 
-  window.addEventListener('resize', () => renderDashboard(lastQuotas, lastHistory));
+  window.addEventListener('resize', () => {
+    renderDashboard(lastQuotas, lastHistory);
+    if (activeChartKey) openChartModal(activeChartKey);
+  });
 
   loadAndRender();
 });

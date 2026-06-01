@@ -13,7 +13,7 @@
         <img class="brand-logo" src="icons/icon48.png" alt="" />
         <div class="brand-copy">
           <h1 class="brand-title">Quota Monitor</h1>
-          <p class="brand-subtitle"><span id="sidebarVersion">v0.3.4</span> · Extension settings</p>
+          <p class="brand-subtitle"><span id="sidebarVersion">v0.3.5</span> · Extension settings</p>
         </div>
       </div>
       <nav class="settings-nav-list" aria-label="Settings sections">
@@ -104,11 +104,57 @@
         </div>
       </section>
 
+      <div id="dashboardRefreshStatus" class="dashboard-refresh-status" role="status" aria-live="polite" hidden>
+        <div class="dashboard-refresh-status__copy">
+          <span class="sync-pulse" aria-hidden="true"></span>
+          <strong id="dashboardRefreshTitle">Ready to sync</strong>
+          <span id="dashboardRefreshDetail">Manual refresh fetches Cloudflare data and updates today's cache sample.</span>
+        </div>
+        <div class="dashboard-refresh-status__bar" aria-hidden="true">
+          <span id="dashboardRefreshProgress"></span>
+        </div>
+      </div>
+
       <section id="dashboard-content" class="dashboard-content is-card-view" aria-label="Quota dashboard"></section>
       <div class="dashboard-footer">
         <p class="footer-note">Data updates once per day automatically. <span id="dashboardSummary">Last 30 samples</span>.</p>
       </div>
     </main>
+  </div>
+
+  <div id="chartModal" class="chart-modal" role="dialog" aria-modal="true" aria-labelledby="chartModalTitle" hidden>
+    <div class="chart-modal__backdrop" data-chart-modal-close></div>
+    <section class="chart-modal__panel">
+      <button id="chartModalClose" class="icon-button chart-modal__close" type="button" aria-label="Close enlarged chart">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="chart-modal__header">
+        <div>
+          <h2 id="chartModalTitle">Metric trend</h2>
+          <p id="chartModalMeta">Adaptive scale highlights movement across stored samples.</p>
+        </div>
+        <span id="chartModalPercent" class="status-badge">Info</span>
+      </div>
+      <div class="chart-modal__stats">
+        <article>
+          <span>Latest</span>
+          <strong id="chartModalLatest">0</strong>
+        </article>
+        <article>
+          <span>Low</span>
+          <strong id="chartModalLow">0</strong>
+        </article>
+        <article>
+          <span>High</span>
+          <strong id="chartModalHigh">0</strong>
+        </article>
+      </div>
+      <div class="chart-modal__canvas">
+        <canvas id="chartModalCanvas" aria-label="Enlarged trend chart"></canvas>
+      </div>
+    </section>
   </div>
   <script src="i18n.js"></script>
   <script src="dashboard.js"></script>

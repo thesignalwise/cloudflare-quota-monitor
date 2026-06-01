@@ -14,9 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiTestPanelStateEl = document.getElementById('apiTestPanelState');
   const apiTestSummaryEl = document.getElementById('apiTestSummary');
   const apiCapabilityGridEl = document.getElementById('apiCapabilityGrid');
+  const syncLogListEl = document.getElementById('syncLogList');
+  const syncLogEmptyEl = document.getElementById('syncLogEmpty');
+  const syncLogRefreshBtn = document.getElementById('syncLogRefreshBtn');
   const hasChromeStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
   const hasChromeRuntime = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
-  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.4' };
+  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.5' };
 
   const API_CAPABILITIES = [
     {
@@ -323,6 +326,58 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  function safeJsonParse(value, fallback) {
+    if (value === null || value === undefined || value === '') {
+      return fallback;
+    }
+
+    try {
+      return JSON.parse(value);
+    } catch (err) {
+      return fallback;
+    }
+  }
+
+  function sanitizeHistory(history) {
+    if (!Array.isArray(history)) {
+      return [];
+    }
+
+    return history
+      .filter(entry => entry && entry.quotas && Number.isFinite(Number(entry.timestamp)))
+      .map(entry => ({
+        timestamp: Number(entry.timestamp),
+        quotas: entry.quotas
+      }))
+      .slice(-200);
+  }
+
+  function sanitizeMonitoringData(data = {}) {
+    return {
+      quotas: data.quotas || null,
+      history: sanitizeHistory(data.history),
+      lastUpdated: Number.isFinite(Number(data.lastUpdated)) ? Number(data.lastUpdated) : null,
+      syncLogs: sanitizeSyncLogs(data.syncLogs)
+    };
+  }
+
+  function sanitizeSyncLogs(logs) {
+    if (!Array.isArray(logs)) {
+      return [];
+    }
+
+    return logs
+      .filter(log => log && Number.isFinite(Number(log.timestamp)) && typeof log.status === 'string')
+      .map(log => ({
+        timestamp: Number(log.timestamp),
+        source: typeof log.source === 'string' ? log.source : 'manual',
+        status: log.status,
+        message: typeof log.message === 'string' ? log.message : '',
+        durationMs: Number.isFinite(Number(log.durationMs)) ? Number(log.durationMs) : undefined
+      }))
+      .slice(-100);
+  }
+
   function storageGet(keys) {
     return new Promise(resolve => {
       if (hasChromeStorage) {
@@ -333,11 +388,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = {};
       keys.forEach(key => {
         if (key === 'settings') {
-          try {
-            result.settings = JSON.parse(localStorage.getItem('quotaMonitorSettings') || '{}');
-          } catch (err) {
-            result.settings = {};
-          }
+          result.settings = safeJsonParse(localStorage.getItem('quotaMonitorSettings'), {});
+        } else if (key === 'quotas' || key === 'history' || key === 'syncLogs') {
+          result[key] = safeJsonParse(localStorage.getItem(key), key === 'quotas' ? null : []);
+        } else if (key === 'lastUpdated') {
+          const value = Number(localStorage.getItem(key));
+          result.lastUpdated = Number.isFinite(value) ? value : null;
         } else {
           result[key] = localStorage.getItem(key) || undefined;
         }
@@ -356,6 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
       Object.entries(values).forEach(([key, value]) => {
         if (key === 'settings') {
           localStorage.setItem('quotaMonitorSettings', JSON.stringify(value));
+        } else if (key === 'quotas' || key === 'history' || key === 'syncLogs') {
+          localStorage.setItem(key, JSON.stringify(value));
         } else if (value === undefined || value === null) {
           localStorage.removeItem(key);
         } else {
@@ -380,13 +438,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function exportConfig() {
-    const result = await storageGet(['settings', 'localePreference']);
+    const result = await storageGet(['settings', 'localePreference', 'quotas', 'history', 'lastUpdated', 'syncLogs']);
+    const monitoringData = sanitizeMonitoringData({
+      quotas: result.quotas,
+      history: result.history,
+      lastUpdated: result.lastUpdated,
+      syncLogs: result.syncLogs
+    });
     const payload = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       app: 'cloudflare-quota-monitor',
       exportedAt: new Date().toISOString(),
       settings: sanitizeSettings(result.settings || {}),
-      localePreference: result.localePreference || 'auto'
+      localePreference: result.localePreference || 'auto',
+      monitoringData
     };
     downloadJson(`cloudflare-quota-monitor-config-${new Date().toISOString().slice(0, 10)}.json`, payload);
   }
@@ -395,10 +460,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const payload = JSON.parse(text);
     const settings = sanitizeSettings(payload.settings || payload);
     const localePreference = payload.localePreference || 'auto';
+    const hasMonitoringData = Boolean(payload.monitoringData)
+      || Object.prototype.hasOwnProperty.call(payload, 'quotas')
+      || Object.prototype.hasOwnProperty.call(payload, 'history')
+      || Object.prototype.hasOwnProperty.call(payload, 'lastUpdated')
+      || Object.prototype.hasOwnProperty.call(payload, 'syncLogs');
+    const monitoringData = sanitizeMonitoringData(payload.monitoringData || {
+      quotas: payload.quotas,
+      history: payload.history,
+      lastUpdated: payload.lastUpdated,
+      syncLogs: payload.syncLogs
+    });
     if (!settings.apiToken && !settings.accountId) {
       throw new Error('This file does not contain Cloudflare Quota Monitor settings.');
     }
-    return { settings, localePreference };
+    return { settings, localePreference, monitoringData, hasMonitoringData };
   }
 
   async function importConfig(file) {
@@ -407,8 +483,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const text = await file.text();
-    const { settings, localePreference } = parseConfigPayload(text);
-    await storageSet({ settings, localePreference });
+    const { settings, localePreference, monitoringData, hasMonitoringData } = parseConfigPayload(text);
+    const values = { settings, localePreference };
+    if (hasMonitoringData) {
+      values.quotas = monitoringData.quotas;
+      values.history = monitoringData.history;
+      values.lastUpdated = monitoringData.lastUpdated;
+      values.syncLogs = monitoringData.syncLogs;
+    }
+    await storageSet(values);
     applySettings(settings);
     if (hasChromeRuntime) {
       chrome.runtime.sendMessage({ action: 'refreshQuotas' });
@@ -528,7 +611,11 @@ document.addEventListener('DOMContentLoaded', () => {
       pending: 'Checking',
       supported: 'Supported',
       unsupported: 'Limited',
-      error: 'Blocked'
+      error: 'Blocked',
+      started: 'Started',
+      skipped: 'Skipped',
+      success: 'Success',
+      scheduled: 'Scheduled'
     }[status] || status;
   }
 
@@ -556,6 +643,52 @@ document.addEventListener('DOMContentLoaded', () => {
         <small>${escapeHtml(result.detail || result.period || '')}</small>
       </article>
     `).join('');
+  }
+
+  function formatLogTime(timestamp) {
+    const date = new Date(Number(timestamp));
+    if (Number.isNaN(date.getTime())) return 'Unknown time';
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  function formatDuration(durationMs) {
+    const value = Number(durationMs);
+    if (!Number.isFinite(value)) return '';
+    if (value < 1000) return `${Math.round(value)} ms`;
+    return `${(value / 1000).toFixed(1)} s`;
+  }
+
+  function renderSyncLogs(logs) {
+    if (!syncLogListEl) return;
+    const entries = sanitizeSyncLogs(logs).slice().reverse();
+    syncLogListEl.innerHTML = '';
+    if (syncLogEmptyEl) syncLogEmptyEl.hidden = entries.length > 0;
+
+    entries.forEach(log => {
+      const item = document.createElement('article');
+      item.className = `sync-log-item is-${log.status}`;
+      const duration = formatDuration(log.durationMs);
+      item.innerHTML = `
+        <span class="sync-log-dot" aria-hidden="true"></span>
+        <div class="sync-log-main">
+          <strong>${escapeHtml(log.message || statusText(log.status))}</strong>
+          <span>${escapeHtml(formatLogTime(log.timestamp))} · ${escapeHtml(log.source)}${duration ? ` · ${escapeHtml(duration)}` : ''}</span>
+        </div>
+        <em>${escapeHtml(statusText(log.status))}</em>
+      `;
+      syncLogListEl.appendChild(item);
+    });
+  }
+
+  async function loadSyncLogs() {
+    if (!syncLogListEl) return;
+    const result = await storageGet(['syncLogs']);
+    renderSyncLogs(result.syncLogs || []);
   }
 
   async function testCapability(capability, token, accountId) {
@@ -699,5 +832,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   renderCapabilityGrid(initialCapabilityResults());
+  loadSyncLogs();
+  if (syncLogRefreshBtn) {
+    syncLogRefreshBtn.addEventListener('click', () => {
+      syncLogRefreshBtn.disabled = true;
+      loadSyncLogs().finally(() => {
+        syncLogRefreshBtn.disabled = false;
+      });
+    });
+  }
   loadSettings();
 });

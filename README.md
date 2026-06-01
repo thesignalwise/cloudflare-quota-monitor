@@ -53,7 +53,7 @@ Create a Cloudflare API token with read-only access for the products you want to
 - User Details: Read
 - Memberships: Read
 
-The token and account ID are stored in `chrome.storage.local` by the extension. Local config export is optional and downloads a JSON file that includes sensitive settings. Local integration tests read credentials from `.env`.
+The token and account ID are stored in `chrome.storage.local` by the extension. Local config export is optional and downloads a JSON file that includes sensitive settings plus cached quota and history data. Local integration tests read credentials from `.env`.
 
 ## Privacy And Permissions
 
@@ -72,7 +72,7 @@ Privacy surfaces:
 
 - `privacy.html`: extension-bundled privacy policy and Limited Use disclosure.
 - `PRIVACY.md`: website-ready privacy policy text for publishing on an external page.
-- `webdav.html`: local JSON import/export with a visible warning that exported files contain the API token and account ID.
+- `webdav.html`: local JSON import/export with a visible warning that exported files contain the API token, account ID, latest quota cache, and dashboard history.
 
 ## Local Environment
 
@@ -140,7 +140,7 @@ Cloudflare currently exposes Workers Logs ingestion bytes through GraphQL, but n
 - `popup.html`, `popup.js`: high-density popup cockpit with attention-first mini cards.
 - `dashboard.html`, `dashboard.js`: sidebar-integrated grouped dashboard with card and list modes.
 - `options.html`: Cloudflare API credentials.
-- `webdav.html`: local configuration import and export.
+- `webdav.html`: local configuration and monitoring history import/export.
 - `services.html`: monitored service coverage.
 - `schedule.html`: refresh cadence.
 - `about.html`: logo, version, privacy, language, and API coverage notes.

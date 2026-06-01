@@ -14,7 +14,7 @@
         <img class="brand-logo" src="icons/icon48.png" alt="" />
         <div class="brand-copy">
           <h1 class="brand-title">Quota Monitor</h1>
-          <p class="brand-subtitle"><span id="sidebarVersion">v0.3.4</span> · Extension settings</p>
+          <p class="brand-subtitle"><span id="sidebarVersion">v0.3.5</span> · Extension settings</p>
         </div>
       </div>
       <nav class="settings-nav-list" aria-label="Settings sections">
@@ -66,7 +66,7 @@
         </div>
         <div class="heading-actions">
           <span class="summary-badge">Optional</span>
-          <span class="summary-badge" id="headerVersion">v0.3.4</span>
+          <span class="summary-badge" id="headerVersion">v0.3.5</span>
         </div>
       </section>
 
@@ -80,17 +80,17 @@
             <svg class="icon-lg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 4.2 2.8 8.1 7 10 4.2-1.9 7-5.8 7-10V6l-7-3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <div>
               <strong>Exported files include sensitive settings.</strong>
-              <p>The exported JSON contains the Cloudflare API token and account ID. Store it securely and import only files you trust.</p>
+              <p>The exported JSON contains the Cloudflare API token, account ID, latest monitoring cache, and dashboard history. Store it securely and import only files you trust.</p>
             </div>
           </div>
           <div class="config-file-grid">
             <article>
               <strong>Export current configuration</strong>
-              <p>Downloads a local JSON file with API settings and language preference. No remote service is contacted.</p>
+              <p>Downloads a local JSON file with API settings, language preference, latest usage, and dashboard history. No remote service is contacted.</p>
             </article>
             <article>
               <strong>Import configuration</strong>
-              <p>Loads a previously exported JSON file into Chrome local storage, then refreshes quota data.</p>
+              <p>Loads a previously exported JSON file into Chrome local storage, restores trend history, then refreshes quota data.</p>
             </article>
           </div>
           <div class="settings-actions">

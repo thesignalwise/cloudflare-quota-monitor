@@ -86,7 +86,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
   const packageJson = readJson('package.json');
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, '0.3.4');
+  assert.equal(manifest.version, '0.3.5');
   assert.equal(packageJson.version, manifest.version);
   assert.equal(manifest.default_locale, 'en');
   assert.equal(manifest.name, '__MSG_extName__');
@@ -133,7 +133,7 @@ test('HTML pages use local assets and keep required extension mount points', () 
     },
     {
       file: 'dashboard.html',
-      ids: ['refreshDashboard', 'dashboardSummary', 'dashboard-content', 'cardViewBtn', 'listViewBtn']
+      ids: ['refreshDashboard', 'dashboardSummary', 'dashboard-content', 'cardViewBtn', 'listViewBtn', 'dashboardRefreshStatus', 'dashboardRefreshTitle', 'dashboardRefreshDetail', 'dashboardRefreshProgress', 'chartModal', 'chartModalCanvas', 'chartModalClose']
     },
     {
       file: 'options.html',
@@ -149,7 +149,7 @@ test('HTML pages use local assets and keep required extension mount points', () 
     },
     {
       file: 'schedule.html',
-      ids: ['syncSchedule']
+      ids: ['syncSchedule', 'sync-log-settings', 'syncLogList', 'syncLogRefreshBtn']
     },
     {
       file: 'about.html',
@@ -239,6 +239,11 @@ test('background worker defines the expected quota and message surface', () => {
   assert.match(source, /message\.action === 'getQuotas'/);
   assert.match(source, /message\.action === 'refreshQuotas'/);
   assert.match(source, /chrome\.alarms\.create\('updateQuotas'/);
+  assert.match(source, /chrome\.runtime\.onStartup\.addListener/);
+  assert.match(source, /function ensureUpdateAlarm/);
+  assert.match(source, /function recordSyncLog/);
+  assert.match(source, /syncLogs/);
+  assert.match(source, /updateQuotas\('scheduled'\)/);
   assert.match(source, /function upsertHistorySnapshot/, 'manual refresh should upsert today history instead of appending duplicate samples');
   assert.match(source, /await upsertHistorySnapshot\(result, now\)/, 'refresh response should wait for history cache writes');
   assert.match(source, /lastUpdated: now/, 'latest refresh timestamp should be cached with quota data');
@@ -270,10 +275,12 @@ test('privacy and release packaging surfaces are present', () => {
   const privacyMd = readText('PRIVACY.md');
   const packageScript = readText('scripts/package-extension.mjs');
 
-  assert.equal(manifest.version, '0.3.4');
+  assert.equal(manifest.version, '0.3.5');
   assert.equal(packageJson.scripts.package, 'node scripts/package-extension.mjs');
   assert.match(privacyHtml, /Limited Use disclosure/);
   assert.match(privacyMd, /Chrome Web Store User Data Policy/);
+  assert.match(readText('release-notes.html'), /Released 2026-06-01/);
+  assert.match(readText('release-notes.html'), /Scheduled sync observability/);
   assert.match(packageScript, /privacy\.html/);
   assert.doesNotMatch(packageScript, /\.env/);
   assert.doesNotMatch(packageScript, /google-stitch/);
@@ -290,6 +297,15 @@ test('configuration import/export stays local and avoids broad host permissions'
   assert.match(source, /exportConfig/);
   assert.match(source, /importConfig/);
   assert.match(source, /downloadJson/);
+  assert.match(source, /schemaVersion:\s*2/);
+  assert.match(source, /monitoringData/);
+  assert.match(source, /quotas/);
+  assert.match(source, /history/);
+  assert.match(source, /lastUpdated/);
+  assert.match(source, /syncLogs/);
+  assert.match(source, /sanitizeSyncLogs/);
+  assert.match(source, /sanitizeHistory/);
+  assert.match(html, /dashboard history/);
   assert.doesNotMatch(source, /chrome\.permissions/);
   assert.doesNotMatch(source, /ensureWebdavHostPermission/);
   assert.doesNotMatch(source, /method:\s*'PUT'/);
@@ -305,6 +321,48 @@ test('usage dashboard uses percentage-based risk colors', () => {
   ['--risk-low', '--risk-ready', '--risk-watch', '--risk-elevated', '--risk-high', '--risk-critical'].forEach(token => {
     assert.match(css, new RegExp(token), `missing CSS risk token ${token}`);
   });
+});
+
+test('dashboard manual refresh exposes progress feedback', () => {
+  const html = readText('dashboard.html');
+  const source = readText('dashboard.js');
+  const css = readText('style.css');
+
+  assert.match(html, /id=["']dashboardRefreshStatus["']/, 'dashboard should include a refresh status region');
+  assert.match(html, /aria-live=["']polite["']/, 'refresh status should be announced politely');
+  assert.match(source, /function startRefreshProgress/, 'refresh should start visible progress immediately');
+  assert.match(source, /Connecting to Cloudflare/);
+  assert.match(source, /Updating local cache/);
+  assert.match(source, /finishRefreshProgress/);
+  assert.match(css, /\.dashboard-refresh-status/);
+  assert.match(css, /@keyframes spin/);
+  assert.match(css, /@keyframes pulse-ring/);
+});
+
+test('dashboard charts can be expanded and use adaptive trend scaling', () => {
+  const html = readText('dashboard.html');
+  const source = readText('dashboard.js');
+  const css = readText('style.css');
+
+  assert.match(html, /id=["']chartModal["']/, 'dashboard should include an enlarged chart modal');
+  assert.match(source, /function chartScale/, 'dashboard should calculate chart scale separately');
+  assert.match(source, /adaptiveScale:\s*true/, 'mini and modal charts should use adaptive trend scale');
+  assert.match(source, /function openChartModal/, 'dashboard should open a chart modal');
+  assert.match(source, /data-chart-key/, 'metric cards should expose clickable chart targets');
+  assert.match(css, /\.chart-modal/);
+  assert.match(css, /cursor:\s*zoom-in/);
+});
+
+test('sync schedule exposes background job logs', () => {
+  const html = readText('schedule.html');
+  const source = readText('options.js');
+  const css = readText('style.css');
+
+  assert.match(html, /id=["']sync-log-settings["']/, 'schedule page should include sync log settings');
+  assert.match(html, /id=["']syncLogList["']/, 'schedule page should include a sync log list');
+  assert.match(source, /function renderSyncLogs/, 'options controller should render sync logs');
+  assert.match(source, /storageGet\(\['syncLogs'\]\)/, 'schedule page should read stored sync logs');
+  assert.match(css, /\.sync-log-item/);
 });
 
 test('Cloudflare token verifies and can see the configured account', async t => {

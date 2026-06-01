@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const HISTORY_LIMIT = 200;
+const SYNC_LOG_LIMIT = 100;
 
 // Static quota limits for Cloudflare free-tier products. Each entry includes a
 // limit, period, and human-friendly unit used by the UI.
@@ -103,6 +104,31 @@ function upsertHistorySnapshot(quotas, timestamp = Date.now()) {
       chrome.storage.local.set({ history: nextHistory }, resolve);
     });
   });
+}
+
+function recordSyncLog(source, status, message, details = {}) {
+  const entry = {
+    timestamp: Date.now(),
+    source: source || 'manual',
+    status,
+    message,
+    durationMs: Number.isFinite(Number(details.durationMs)) ? Number(details.durationMs) : undefined
+  };
+
+  return new Promise(resolve => {
+    chrome.storage.local.get({ syncLogs: [] }, res => {
+      const logs = Array.isArray(res.syncLogs)
+        ? res.syncLogs.filter(log => log && log.timestamp && log.status)
+        : [];
+      logs.push(entry);
+      while (logs.length > SYNC_LOG_LIMIT) logs.shift();
+      chrome.storage.local.set({ syncLogs: logs }, resolve);
+    });
+  });
+}
+
+function ensureUpdateAlarm() {
+  chrome.alarms.create('updateQuotas', { periodInMinutes: 1440 });
 }
 
 /**
@@ -740,12 +766,15 @@ async function fetchPagesUsage(token, accountId) {
  * structure consumable by the UI and stores it in both memory and
  * chrome.storage.local.
  */
-async function updateQuotas() {
+async function updateQuotas(source = 'manual') {
+  const startedAt = Date.now();
+  await recordSyncLog(source, 'started', 'Sync started.');
   const settings = await loadSettings();
   // Only attempt if both token and account ID are present
   if (!settings.apiToken || !settings.accountId) {
     cachedQuotas = null;
     await chrome.storage.local.set({ quotas: null });
+    await recordSyncLog(source, 'skipped', 'Missing API token or account ID.', { durationMs: Date.now() - startedAt });
     return;
   }
   const token = settings.apiToken.trim();
@@ -917,24 +946,32 @@ async function updateQuotas() {
     cachedQuotas = result;
     await chrome.storage.local.set({ quotas: result, lastUpdated: now });
     await upsertHistorySnapshot(result, now);
+    await recordSyncLog(source, 'success', 'Quota data refreshed and history cache updated.', { durationMs: Date.now() - startedAt });
+    return result;
   } catch (err) {
     console.warn('Failed to update quotas', err);
+    await recordSyncLog(source, 'error', err.message || 'Cloudflare quota refresh failed.', { durationMs: Date.now() - startedAt });
     // Do not overwrite cached quotas if query fails
+    return cachedQuotas;
   }
 }
 
 // Create an alarm on installation to update quotas regularly.
 chrome.runtime.onInstalled.addListener(() => {
+  ensureUpdateAlarm();
   // Immediately update after install
-  updateQuotas();
-  // Schedule updates once per day. You can adjust the interval by changing periodInMinutes.
-  chrome.alarms.create('updateQuotas', { periodInMinutes: 1440 });
+  updateQuotas('install');
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  ensureUpdateAlarm();
+  recordSyncLog('startup', 'scheduled', 'Daily sync alarm checked.');
 });
 
 // Alarm listener to trigger updates
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'updateQuotas') {
-    updateQuotas();
+    updateQuotas('scheduled');
   }
 });
 
@@ -952,7 +989,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ data: cachedQuotas });
     }
   } else if (message.action === 'refreshQuotas') {
-    updateQuotas().then(() => {
+    updateQuotas(message.source || 'manual').then(() => {
       sendResponse({ data: cachedQuotas });
     });
     return true; // keep message channel open

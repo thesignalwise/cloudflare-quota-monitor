@@ -10,7 +10,7 @@ The extension may handle:
 
 - Cloudflare API token and Cloudflare Account ID entered by the user.
 - Cloudflare quota telemetry, including usage counts, limits, percentages, timestamps, and local history samples returned by Cloudflare APIs.
-- Optional local configuration export files selected by the user. Exported files include the Cloudflare API token and account ID.
+- Optional local configuration export files selected by the user. Exported files include the Cloudflare API token, account ID, latest quota cache, and local dashboard history.
 - Extension preferences such as language selection and cached refresh state.
 
 ## How data is used
@@ -29,7 +29,7 @@ Settings and cached quota results are stored in `chrome.storage.local` on the us
 
 The extension sends the Cloudflare API token only to `https://api.cloudflare.com/` for token verification and read-only quota telemetry requests.
 
-If the user exports configuration, the extension creates a local JSON file through the browser. The exported file includes sensitive settings such as the Cloudflare API token and account ID. Users should store exported files securely and import only files they trust.
+If the user exports configuration, the extension creates a local JSON file through the browser. The exported file includes sensitive settings such as the Cloudflare API token and account ID, plus cached monitoring data and local dashboard history. Users should store exported files securely and import only files they trust.
 
 ## Data sharing
 
