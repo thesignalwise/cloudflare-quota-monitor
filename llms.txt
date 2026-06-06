@@ -18,6 +18,7 @@ Cloudflare Quota Monitor helps users create a scoped read-only Cloudflare API to
 - Product name: Cloudflare Quota Monitor.
 - Publisher/site owner: SignalWise.
 - Preferred domain: https://cloudflare-quota-monitor.thesignalwise.com/
+- Chrome Web Store listing: https://chromewebstore.google.com/detail/cloudflare-free-quota-monitor/ohdjecmdkcmghmlcmmhlimpjllgceejp
 - Runtime: Chrome Manifest V3 extension.
 - Website delivery: static HTML/CSS/assets, no remote fonts or remote JavaScript.
 - Credential model: Cloudflare API token and account ID stay in Chrome local storage.
@@ -37,3 +38,4 @@ Cloudflare Quota Monitor helps users create a scoped read-only Cloudflare API to
 ## Repository
 
 - [GitHub repository](https://github.com/thesignalwise/cloudflare-quota-monitor) — Source code, extension files, tests, and packaging scripts.
+- [Chrome Web Store listing](https://chromewebstore.google.com/detail/cloudflare-free-quota-monitor/ohdjecmdkcmghmlcmmhlimpjllgceejp) — Public installation URL once the item is approved and published.

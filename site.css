@@ -244,6 +244,12 @@ html:lang(zh-CN) h2 {
   background: #1b1c1d;
 }
 
+.button--light {
+  color: #1b1c1d;
+  border-color: rgba(255, 255, 255, .58);
+  background: rgba(255, 255, 255, .9);
+}
+
 .button svg {
   width: 18px;
   height: 18px;
@@ -890,6 +896,13 @@ h1 {
   color: rgba(255, 255, 255, .88);
 }
 
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .site-footer {
   border-top: 1px solid var(--line);
   background: rgba(255, 250, 242, .74);
@@ -1127,6 +1140,14 @@ h1 {
   .cta-panel {
     grid-template-columns: 1fr;
     padding: 22px;
+  }
+
+  .cta-actions {
+    justify-content: stretch;
+  }
+
+  .cta-actions .button {
+    width: 100%;
   }
 
   .footer-inner {

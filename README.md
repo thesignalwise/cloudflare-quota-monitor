@@ -4,6 +4,12 @@ Chrome MV3 extension for monitoring Cloudflare free-tier usage from a compact po
 
 The UI follows the Google Stitch "Professional Modern Light" direction included in `google-stitch/`: white and light gray surfaces, Cloudflare orange accents, compact cards, and dense operational data.
 
+## Links
+
+- Website: https://cloudflare-quota-monitor.thesignalwise.com/
+- Chrome Web Store: https://chromewebstore.google.com/detail/cloudflare-free-quota-monitor/ohdjecmdkcmghmlcmmhlimpjllgceejp
+- Source: https://github.com/thesignalwise/cloudflare-quota-monitor
+
 ## What It Monitors
 
 The extension reads Cloudflare usage through the public GraphQL Analytics API plus the Pages REST API. Unsupported counters are displayed as unavailable instead of being shown as a false zero.
@@ -99,6 +105,12 @@ CLOUDFLARE_ACCOUNT_ID=replace_with_your_account_id
 - Internationalization: UI defaults to the browser language and supports Simplified Chinese, Traditional Chinese, English, Japanese, and Korean. A manual language selector is available on the About page.
 
 ## Install In Chrome
+
+Install the published extension from the Chrome Web Store:
+
+- https://chromewebstore.google.com/detail/cloudflare-free-quota-monitor/ohdjecmdkcmghmlcmmhlimpjllgceejp
+
+For local development, load the unpacked extension:
 
 1. Open `chrome://extensions/`.
 2. Enable Developer mode.
