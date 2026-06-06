@@ -179,7 +179,7 @@ test('HTML pages use local assets and keep required extension mount points', () 
       assert.match(html, /class=["'][^"']*settings-nav-item/, `${page.file} should use the shared sidebar navigation`);
       assert.match(html, /href=["']privacy\.html["']/, `${page.file} should link to Privacy Policy`);
       assert.match(html, /href=["']release-notes\.html["']/, `${page.file} should link to Release Notes`);
-      assert.match(html, /href=["']https:\/\/thesignalwise\.com["']/, `${page.file} should link to the official website`);
+      assert.match(html, /href=["']https:\/\/cloudflare-quota-monitor\.thesignalwise\.com\/["']/, `${page.file} should link to the official website`);
       assert.match(html, /href=["']https:\/\/github\.com\/thesignalwise\/cloudflare-quota-monitor["']/, `${page.file} should link to GitHub`);
     }
   });

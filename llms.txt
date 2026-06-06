@@ -2,7 +2,7 @@
 
 > Local-first Chrome MV3 extension and static website for monitoring Cloudflare free-tier usage across Workers, Pages, KV, D1, R2, Queues, Hyperdrive, Browser Run, Workers AI, Durable Objects, Analytics, and Logs.
 
-Cloudflare Quota Monitor helps users create a scoped read-only Cloudflare API token, store it locally in Chrome, and view quota pressure without sending credentials to a SignalWise backend.
+Cloudflare Quota Monitor helps users create a scoped read-only Cloudflare API token, store it locally in Chrome, and view quota pressure without sending credentials to a TheSignalWise backend.
 
 ## Primary Pages
 
@@ -16,7 +16,7 @@ Cloudflare Quota Monitor helps users create a scoped read-only Cloudflare API to
 ## Key Facts
 
 - Product name: Cloudflare Quota Monitor.
-- Publisher/site owner: SignalWise.
+- Publisher/site owner: TheSignalWise.
 - Preferred domain: https://cloudflare-quota-monitor.thesignalwise.com/
 - Chrome Web Store listing: https://chromewebstore.google.com/detail/cloudflare-free-quota-monitor/ohdjecmdkcmghmlcmmhlimpjllgceejp
 - Runtime: Chrome Manifest V3 extension.
