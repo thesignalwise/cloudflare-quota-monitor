@@ -4,6 +4,8 @@
   "private": true,
   "description": "Automated checks for the Cloudflare Free Quota Monitor extension.",
   "scripts": {
+    "build:site": "node scripts/build-site.mjs",
+    "deploy:site": "npm run build:site && npx wrangler pages deploy dist/site --project-name cloudflare-quota-monitor --branch main",
     "package": "node scripts/package-extension.mjs",
     "test": "node --test tests/*.test.js"
   }
