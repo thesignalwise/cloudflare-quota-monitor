@@ -30,6 +30,10 @@ jobs:
       - name: Build static site
         run: npm run build:site
 
+      - name: Ensure Cloudflare Pages project
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: npx wrangler pages project create cloudflare-quota-monitor --production-branch main || true
+
       - name: Deploy to Cloudflare Pages
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
         run: npx wrangler pages deploy dist/site --project-name cloudflare-quota-monitor --branch main
