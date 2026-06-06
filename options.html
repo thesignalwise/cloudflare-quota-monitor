@@ -139,6 +139,57 @@
           </details>
           <div id="msg" class="message"></div>
         </section>
+
+        <section class="settings-card api-onboarding-card" id="api-token-help">
+          <div class="settings-card__header">
+            <h3>How to create your Cloudflare API token</h3>
+            <span class="status-badge">Read-only setup</span>
+          </div>
+          <div class="onboarding-steps">
+            <article>
+              <span>1</span>
+              <div>
+                <h4>Create a Custom token</h4>
+                <p>Open Cloudflare Dashboard → My Profile → API Tokens → Create Token. Choose Get started under Custom token. Do not use the legacy Global API Key.</p>
+              </div>
+            </article>
+            <article>
+              <span>2</span>
+              <div>
+                <h4>Add the required reads</h4>
+                <p>Add Account → Account Analytics → Read. For full coverage, add read permissions for Pages, Workers Scripts, KV, R2, D1, Queues, Hyperdrive, Workers AI, Zero Trust, User Details, and Memberships.</p>
+              </div>
+            </article>
+            <article>
+              <span>3</span>
+              <div>
+                <h4>Limit the token to one account</h4>
+                <p>Set Account Resources to the Cloudflare account you want to monitor. Copy the token secret after creation; Cloudflare shows it only once.</p>
+              </div>
+            </article>
+            <article>
+              <span>4</span>
+              <div>
+                <h4>Paste and test here</h4>
+                <p>Paste the token and Account ID above, save, then run Test API. If one service is blocked, add that product's Read permission and test again.</p>
+              </div>
+            </article>
+          </div>
+          <div class="permission-help-grid">
+            <div><strong>Minimum</strong><span>Account Analytics: Read</span></div>
+            <div><strong>Account check</strong><span>User Details: Read · Memberships: Read</span></div>
+            <div><strong>Full coverage</strong><span>Cloudflare Pages: Read · Workers Scripts: Read · Workers KV Storage: Read · Workers R2 Storage: Read · D1: Read · Queues: Read · Hyperdrive: Read · Workers AI: Read · Zero Trust: Read</span></div>
+          </div>
+          <div class="about-link-row">
+            <a class="btn btn--secondary" href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <span>Open Cloudflare API Tokens</span>
+            </a>
+            <a class="btn btn--secondary" href="https://developers.cloudflare.com/fundamentals/api/get-started/create-token/" target="_blank" rel="noreferrer">
+              <span>Cloudflare token docs</span>
+            </a>
+          </div>
+        </section>
       </div>
     </main>
   </div>

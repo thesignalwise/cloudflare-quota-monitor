@@ -5,6 +5,8 @@
 node_modules/
 dist/
 build/
+tmp/
+.playwright-mcp/
 *.log
 chrome-*.png
 dashboard-*.png

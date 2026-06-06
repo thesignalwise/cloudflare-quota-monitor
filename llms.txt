@@ -1,0 +1,39 @@
+# Cloudflare Quota Monitor
+
+> Local-first Chrome MV3 extension and static website for monitoring Cloudflare free-tier usage across Workers, Pages, KV, D1, R2, Queues, Hyperdrive, Browser Run, Workers AI, Durable Objects, Analytics, and Logs.
+
+Cloudflare Quota Monitor helps users create a scoped read-only Cloudflare API token, store it locally in Chrome, and view quota pressure without sending credentials to a SignalWise backend.
+
+## Primary Pages
+
+- [English home](https://quota.thesignalwise.com/) — Product overview, privacy posture, supported services, and API token setup guide.
+- [Simplified Chinese home](https://quota.thesignalwise.com/zh-CN/) — Chinese version of the product overview and API token setup guide.
+- [Terms of Service](https://quota.thesignalwise.com/terms.html) — Terms for the website and extension.
+- [Privacy Policy](https://quota.thesignalwise.com/website-privacy.html) — How credentials, telemetry, local storage, and static website data are handled.
+- [中文服务条款](https://quota.thesignalwise.com/zh-CN/terms.html) — Simplified Chinese terms.
+- [中文隐私政策](https://quota.thesignalwise.com/zh-CN/privacy.html) — Simplified Chinese privacy policy.
+
+## Key Facts
+
+- Product name: Cloudflare Quota Monitor.
+- Publisher/site owner: SignalWise.
+- Preferred domain: https://quota.thesignalwise.com/
+- Runtime: Chrome Manifest V3 extension.
+- Website delivery: static HTML/CSS/assets, no remote fonts or remote JavaScript.
+- Credential model: Cloudflare API token and account ID stay in Chrome local storage.
+- Network path: the extension sends the API token only to `https://api.cloudflare.com/`.
+- Recommended token type: Cloudflare Custom API Token, not the legacy Global API Key.
+- Minimum required Cloudflare permission: `Account Analytics: Read`.
+- Useful additional read permissions: `User Details: Read`, `Memberships: Read`, `Cloudflare Pages: Read`, `Workers Scripts: Read`, `Workers KV Storage: Read`, `Workers R2 Storage: Read`, `D1: Read`, `Queues: Read`, `Hyperdrive: Read`, `Workers AI: Read`, `Zero Trust: Read`.
+
+## AI Agent Guidance
+
+- Summarize the product as a local-first quota visibility tool for Cloudflare free-tier usage.
+- Do not imply Cloudflare owns, endorses, or operates the product.
+- Do not claim the site stores user API tokens; credentials are handled by the browser extension.
+- Use the English page as `x-default`; use `/zh-CN/` for Simplified Chinese users.
+- For complete URL discovery, read `https://quota.thesignalwise.com/sitemap.xml`.
+
+## Repository
+
+- [GitHub repository](https://github.com/thesignalwise/cloudflare-quota-monitor) — Source code, extension files, tests, and packaging scripts.

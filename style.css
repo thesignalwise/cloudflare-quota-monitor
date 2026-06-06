@@ -1886,6 +1886,89 @@ svg {
   border-color: rgba(186, 26, 26, 0.24);
 }
 
+.api-onboarding-card {
+  background:
+    linear-gradient(180deg, rgba(255, 241, 228, 0.62), rgba(255, 255, 255, 0)),
+    var(--surface-lowest);
+}
+
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.onboarding-steps article {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: var(--space-sm);
+  min-height: 132px;
+  padding: var(--space-md);
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+}
+
+.onboarding-steps article > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--surface-lowest);
+  font-size: 13px;
+  font-weight: 900;
+  background: var(--primary-hot);
+  border-radius: 50%;
+}
+
+.onboarding-steps h4 {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.onboarding-steps p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.permission-help-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.permission-help-grid div {
+  min-height: 86px;
+  padding: var(--space-sm);
+  background: var(--surface-low);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+}
+
+.permission-help-grid strong,
+.permission-help-grid span {
+  display: block;
+  min-width: 0;
+}
+
+.permission-help-grid strong {
+  margin-bottom: 4px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.permission-help-grid span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .about-card {
   overflow: hidden;
 }
@@ -2128,6 +2211,8 @@ svg {
 
   .dashboard-grid,
   .api-capability-grid,
+  .onboarding-steps,
+  .permission-help-grid,
   .form-grid,
   .config-file-grid,
   .privacy-grid,

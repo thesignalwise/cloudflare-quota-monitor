@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# AI agent site summary: https://quota.thesignalwise.com/llms.txt
+Sitemap: https://quota.thesignalwise.com/sitemap.xml

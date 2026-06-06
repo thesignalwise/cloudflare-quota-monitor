@@ -1,0 +1,43 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#FFFAF2"/>
+  <path d="M0 0h1200v630H0z" fill="#FFFAF2"/>
+  <g opacity=".44">
+    <path d="M0 72h1200M0 144h1200M0 216h1200M0 288h1200M0 360h1200M0 432h1200M0 504h1200M0 576h1200" stroke="#E8DDD0"/>
+    <path d="M72 0v630M144 0v630M216 0v630M288 0v630M360 0v630M432 0v630M504 0v630M576 0v630M648 0v630M720 0v630M792 0v630M864 0v630M936 0v630M1008 0v630M1080 0v630M1152 0v630" stroke="#E8DDD0"/>
+  </g>
+  <rect x="62" y="58" width="108" height="108" rx="24" fill="#FFF7ED" stroke="#E8DDD0"/>
+  <path d="M84 130c0-19 12.4-32.8 29.6-32.8 13.8 0 25.8 9.7 28.8 23.1 9.2 1.3 15.4 8 15.4 16.7 0 10-8.1 17.9-18.4 17.9H91.5C79 154.9 69.3 145.4 69.3 133.2c0-11.2 8.3-20.3 19.5-21.2" fill="#F38020" fill-opacity=".18"/>
+  <path d="M86.2 126.9c1.8-17.2 13.6-28.3 29.1-28.3 13.3 0 23.9 8.6 27 21.4 8.2 1.3 13.9 7.8 13.9 15.8 0 9.5-7.8 17-17.9 17H92.4c-12.3 0-21.7-9.1-21.7-20.6 0-10.4 7.7-19 18-19.9" stroke="#BA4E00" stroke-width="4" stroke-linecap="round"/>
+  <rect x="94" y="120" width="7.5" height="22" rx="3.75" fill="#0F8A5F"/>
+  <rect x="110" y="109" width="7.5" height="33" rx="3.75" fill="#006591"/>
+  <rect x="126" y="101" width="7.5" height="41" rx="3.75" fill="#F38020"/>
+  <circle cx="140.5" cy="99.5" r="8.5" fill="#BA1A1A"/>
+  <text x="196" y="102" fill="#1B1C1D" font-family="Aptos Display, Segoe UI, sans-serif" font-size="36" font-weight="800">Quota Monitor</text>
+  <text x="198" y="137" fill="#7C6B5B" font-family="Segoe UI, sans-serif" font-size="19" font-weight="800" letter-spacing="2">SIGNALWISE</text>
+  <circle cx="73" cy="234" r="7" fill="#F38020"/>
+  <text x="92" y="244" fill="#4D4F52" font-family="Segoe UI, sans-serif" font-size="24" font-weight="900" letter-spacing="2">QUOTA.THESIGNALWISE.COM</text>
+  <text x="72" y="332" fill="#1B1C1D" font-family="Aptos Display, Segoe UI, sans-serif" font-size="82" font-weight="900">Cloudflare Quota</text>
+  <text x="72" y="420" fill="#1B1C1D" font-family="Aptos Display, Segoe UI, sans-serif" font-size="82" font-weight="900">Monitor</text>
+  <text x="76" y="476" fill="#4D4F52" font-family="Segoe UI, sans-serif" font-size="29" font-weight="600">Local-first visibility for Cloudflare free-tier usage pressure.</text>
+  <text x="76" y="518" fill="#4D4F52" font-family="Segoe UI, sans-serif" font-size="25" font-weight="700">Read-only API token · No backend · Static website</text>
+  <g transform="translate(794 172)">
+    <rect width="318" height="286" rx="9" fill="#FFFFFF" stroke="#1F2328" stroke-width="2"/>
+    <rect x="1" y="1" width="316" height="37" rx="8" fill="#FFFFFF"/>
+    <circle cx="24" cy="19" r="5" fill="#F05F57"/>
+    <circle cx="40" cy="19" r="5" fill="#F6C343"/>
+    <circle cx="56" cy="19" r="5" fill="#39A85A"/>
+    <rect x="86" y="10" width="196" height="18" rx="6" fill="#F5F6F7" stroke="#E1E3E4"/>
+    <rect y="38" width="92" height="248" fill="#FFF7EE"/>
+    <rect x="92" y="38" width="226" height="248" fill="#F8F9FA"/>
+    <text x="112" y="82" fill="#1B1C1D" font-family="Segoe UI, sans-serif" font-size="18" font-weight="900">Free tier pressure</text>
+    <rect x="112" y="109" width="54" height="48" rx="6" fill="#FFFFFF" stroke="#E3E5E6"/>
+    <rect x="178" y="109" width="54" height="48" rx="6" fill="#FFFFFF" stroke="#E3E5E6"/>
+    <rect x="244" y="109" width="54" height="48" rx="6" fill="#FFFFFF" stroke="#E3E5E6"/>
+    <text x="122" y="140" fill="#1B1C1D" font-family="Segoe UI, sans-serif" font-size="20" font-weight="900">82%</text>
+    <text x="188" y="140" fill="#1B1C1D" font-family="Segoe UI, sans-serif" font-size="20" font-weight="900">41%</text>
+    <text x="254" y="140" fill="#1B1C1D" font-family="Segoe UI, sans-serif" font-size="20" font-weight="900">94%</text>
+    <rect x="112" y="172" width="186" height="32" rx="6" fill="#FFFFFF" stroke="#E3E5E6"/>
+    <rect x="112" y="215" width="186" height="32" rx="6" fill="#FFFFFF" stroke="#E3E5E6"/>
+    <rect x="112" y="258" width="186" height="17" rx="6" fill="#FFFFFF" stroke="#E3E5E6"/>
+  </g>
+</svg>

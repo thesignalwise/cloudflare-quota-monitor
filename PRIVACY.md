@@ -55,4 +55,4 @@ The extension does not request optional broad host permissions for backup or res
 
 ## Contact
 
-For privacy questions, contact thesignalwise@thesignalwise.com.
+For privacy questions, contact cloudflare-quota-monitor@thesignalwise.com.

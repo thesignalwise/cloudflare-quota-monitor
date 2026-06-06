@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cloudflare Quota Monitor 是一个本地优先的配额监控仪表盘，用于查看 Workers、R2、D1、KV、Pages、Queues 等 Cloudflare 免费层用量。" />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <meta name="author" content="SignalWise" />
+  <meta property="og:site_name" content="SignalWise" />
+  <meta property="og:title" content="Cloudflare Quota Monitor" />
+  <meta property="og:description" content="面向 Cloudflare 免费层配额压力的本地优先可视化工具。" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://quota.thesignalwise.com/zh-CN/" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:locale:alternate" content="en_US" />
+  <meta property="og:image" content="https://quota.thesignalwise.com/assets/og-image.png" />
+  <meta property="og:image:secure_url" content="https://quota.thesignalwise.com/assets/og-image.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Cloudflare Quota Monitor 仪表盘预览" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Cloudflare Quota Monitor" />
+  <meta name="twitter:description" content="面向 Cloudflare 免费层配额压力的本地优先可视化工具。" />
+  <meta name="twitter:image" content="https://quota.thesignalwise.com/assets/og-image.png" />
+  <meta name="twitter:image:alt" content="Cloudflare Quota Monitor 仪表盘预览" />
+  <meta name="theme-color" content="#f38020" />
+  <title>Cloudflare 配额监控 - SignalWise</title>
+  <link rel="canonical" href="https://quota.thesignalwise.com/zh-CN/" />
+  <link rel="alternate" hreflang="en" href="https://quota.thesignalwise.com/" />
+  <link rel="alternate" hreflang="zh-CN" href="https://quota.thesignalwise.com/zh-CN/" />
+  <link rel="alternate" hreflang="x-default" href="https://quota.thesignalwise.com/" />
+  <link rel="manifest" href="../site.webmanifest" />
+  <link rel="alternate" type="text/markdown" href="https://quota.thesignalwise.com/llms.txt" title="llms.txt" />
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preload" as="image" href="../assets/quota-logo.svg" />
+  <link rel="stylesheet" href="../site.css" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Cloudflare Quota Monitor",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Chrome",
+      "url": "https://quota.thesignalwise.com/zh-CN/",
+      "description": "一个本地优先的配额监控仪表盘，用于查看 Cloudflare Workers、R2、D1、KV、Pages、Queues 等免费层用量。",
+      "image": "https://quota.thesignalwise.com/assets/og-image.png",
+      "publisher": {
+        "@type": "Organization",
+        "name": "SignalWise",
+        "url": "https://thesignalwise.com/"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="site-header">
+    <div class="nav-shell">
+      <a class="brand-link" href="./" aria-label="Cloudflare Quota Monitor 首页">
+        <img src="../assets/quota-logo.svg" alt="" />
+        <span class="brand-wordmark">
+          <strong>Quota Monitor</strong>
+          <span>SignalWise</span>
+        </span>
+      </a>
+      <nav class="nav-links" aria-label="主导航">
+        <a href="#coverage">覆盖范围</a>
+        <a href="#privacy">隐私</a>
+        <a href="#api-setup">API 设置</a>
+        <a href="#install">安装</a>
+        <a href="terms.html">条款</a>
+      </nav>
+      <div class="nav-actions">
+        <div class="language-switcher" aria-label="语言切换">
+          <a href="../" lang="en" hreflang="en">EN</a>
+          <span aria-current="true">中文</span>
+        </div>
+        <a class="button button--primary" href="https://github.com/thesignalwise/cloudflare-quota-monitor" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 18c-2.2.7-2.2-1.1-3.1-1.3M15.5 21v-3.9c0-1.1.1-1.5-.5-2.1 2.8-.3 5.7-1.4 5.7-6.1 0-1.4-.5-2.5-1.3-3.4.1-.3.6-1.7-.1-3.4 0 0-1.1-.3-3.5 1.3a12 12 0 0 0-6.4 0C7 1.8 5.9 2.1 5.9 2.1c-.7 1.7-.2 3.1-.1 3.4A5.1 5.1 0 0 0 4.5 9c0 4.7 2.9 5.8 5.7 6.1-.4.4-.7.9-.8 1.7V21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">quota.thesignalwise.com</p>
+        <h1 id="hero-title">Cloudflare<br />配额<br />监控</h1>
+        <p>从一个紧凑、本地优先的仪表盘查看 Cloudflare 开发者产品的免费层用量压力。只读遥测，没有后端，也没有托管凭据库。</p>
+        <div class="hero-actions">
+          <a class="button button--primary" href="https://github.com/thesignalwise/cloudflare-quota-monitor" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            从源码安装
+          </a>
+          <a class="button" href="#coverage">查看覆盖范围</a>
+        </div>
+        <ul class="trust-strip" aria-label="产品特性">
+          <li>Chrome MV3</li>
+          <li>只读 API Token</li>
+          <li>仅本地存储</li>
+          <li>13 个服务组</li>
+        </ul>
+      </div>
+
+      <figure class="product-shot" aria-label="产品仪表盘预览">
+        <div class="product-window">
+          <div class="window-top">
+            <div class="traffic" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="window-url">quota.thesignalwise.com/dashboard</div>
+          </div>
+          <div class="dashboard-preview">
+            <aside class="preview-sidebar" aria-hidden="true">
+              <div class="preview-brand">
+                <img class="mini-logo" src="../assets/favicon.svg" alt="" />
+                Quota Monitor
+              </div>
+              <div class="preview-menu">
+                <span class="active">仪表盘</span>
+                <span>API 配置</span>
+                <span>监控服务</span>
+                <span>同步计划</span>
+                <span>隐私</span>
+              </div>
+            </aside>
+            <div class="preview-main">
+              <div class="preview-header">
+                <div>
+                  <h2>免费层压力</h2>
+                  <p>按配额风险和最近同步时间排序</p>
+                </div>
+                <span class="sync-badge">已同步 09:42</span>
+              </div>
+              <div class="metric-grid">
+                <div class="metric">
+                  <span>R2 Class A</span>
+                  <strong>82%</strong>
+                  <div class="meter warn"><i style="width: 82%"></i></div>
+                </div>
+                <div class="metric">
+                  <span>Workers</span>
+                  <strong>41%</strong>
+                  <div class="meter"><i style="width: 41%"></i></div>
+                </div>
+                <div class="metric">
+                  <span>AI Neurons</span>
+                  <strong>94%</strong>
+                  <div class="meter danger"><i style="width: 94%"></i></div>
+                </div>
+              </div>
+              <div class="service-table" aria-hidden="true">
+                <div class="service-row"><strong>R2 Storage</strong><span>7.8 GB / 10 GB</span><em class="pill watch">关注</em></div>
+                <div class="service-row"><strong>D1 Rows Read</strong><span>1.6M / 5M</span><em class="pill">健康</em></div>
+                <div class="service-row"><strong>Pages Builds</strong><span>186 / 500</span><em class="pill">健康</em></div>
+                <div class="service-row"><strong>Workers AI</strong><span>9.4K / 10K</span><em class="pill hot">紧急</em></div>
+                <div class="service-row"><strong>Queues</strong><span>232K billable ops</span><em class="pill">健康</em></div>
+                <div class="service-row"><strong>KV Reads</strong><span>61K / 100K</span><em class="pill watch">关注</em></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption class="floating-alert">
+          <strong>在免费层触顶前看到风险。</strong>
+          <span>风险分组会把最需要处理的计数器优先展示出来。</span>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="section" id="features" aria-labelledby="features-title">
+      <div class="section-header">
+        <h2 id="features-title">为运行小型 Cloudflare 技术栈的人准备。</h2>
+        <p>Quota Monitor 保持边界清晰：读取用量信号、本地缓存结果，并让你在项目突然触顶前更容易扫描限制。</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>压力优先的仪表盘</h3>
+          <p>按用量百分比、风险状态和更新时间排序，让低风险噪声不挡住真正要看的指标。</p>
+        </article>
+        <article class="feature-card">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 4.2 2.8 8.1 7 10 4.2-1.9 7-5.8 7-10V6l-7-3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>本地优先的凭据</h3>
+          <p>你的 Cloudflare API Token 保存在 Chrome 本地存储中，只会发送给 Cloudflare API。</p>
+        </article>
+        <article class="feature-card">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 18.5h12a3 3 0 0 0 .5-5.96A5 5 0 0 0 9 10a3.8 3.8 0 0 0-3 8.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8v8m0 0-3-3m3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>可迁移配置</h3>
+          <p>当你需要在不同浏览器配置之间迁移设置时，可以导入或导出本地 JSON 配置。</p>
+        </article>
+        <article class="feature-card">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="2"/></svg>
+          <h3>定时检查</h3>
+          <p>使用 Chrome alarms 按日刷新遥测，不需要托管 Worker 或账号后端。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section api-guide" id="api-setup" aria-labelledby="api-setup-title">
+      <div class="section-header">
+        <h2 id="api-setup-title">几分钟创建正确的 Cloudflare API Token。</h2>
+        <p>Cloudflare 官方叫它 API Token。请创建有范围限制的 Custom token，不要使用旧的 Global API Key，这样扩展只会拿到你选择账号的只读权限。</p>
+      </div>
+      <div class="setup-steps">
+        <article>
+          <span>1</span>
+          <h3>打开 API Tokens</h3>
+          <p>进入 Cloudflare 控制台的 <strong>My Profile → API Tokens</strong>，点击 <strong>Create Token</strong>，然后在 Custom token 区域选择 <strong>Get started</strong>。</p>
+          <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">打开 Cloudflare Tokens</a>
+        </article>
+        <article>
+          <span>2</span>
+          <h3>添加只读权限</h3>
+          <p>建议命名为 <strong>Quota Monitor Read Only</strong>。先添加 <strong>Account → Account Analytics → Read</strong>，再按需添加你要监控的 Cloudflare 产品读取权限。</p>
+        </article>
+        <article>
+          <span>3</span>
+          <h3>限定账号并复制</h3>
+          <p>将 Account Resources 限定到你要监控的账号。进入 summary 后创建 Token，复制只显示一次的密钥，再和 Account ID 一起填入扩展。</p>
+        </article>
+      </div>
+      <div class="permission-panel" aria-label="推荐的 Cloudflare API token 权限">
+        <div>
+          <h3>推荐权限</h3>
+          <p>先添加必需权限，再只为你实际使用的产品添加可选读取权限。</p>
+        </div>
+        <div class="permission-list">
+          <div><strong>必需</strong><span>Account Analytics: Read</span></div>
+          <div><strong>Token / 账号检查</strong><span>User Details: Read · Memberships: Read</span></div>
+          <div><strong>核心开发者产品</strong><span>Workers Scripts: Read · Workers KV Storage: Read · Workers R2 Storage: Read · D1: Read</span></div>
+          <div><strong>可选覆盖</strong><span>Cloudflare Pages: Read · Queues: Read · Hyperdrive: Read · Workers AI: Read · Zero Trust: Read</span></div>
+        </div>
+      </div>
+      <p class="doc-note">Cloudflare 官方文档提供了 Custom token 创建、Account Analytics 只读权限和 Account ID 查找说明。</p>
+    </section>
+
+    <section class="split-band" id="coverage" aria-labelledby="coverage-title">
+      <div class="split-inner">
+        <div>
+          <h2 id="coverage-title">覆盖那些会悄悄累积用量的 Cloudflare 产品。</h2>
+          <p>已验证的计数器会直接展示。Cloudflare 公共 API 未暴露精确配额计数器时，界面会标记为不可用，而不是把 0 当成安全值。</p>
+        </div>
+        <div class="coverage-list" aria-label="监控服务">
+          <div><strong>Workers</strong><span>GraphQL</span></div>
+          <div><strong>Pages</strong><span>REST</span></div>
+          <div><strong>KV</strong><span>GraphQL</span></div>
+          <div><strong>D1</strong><span>GraphQL</span></div>
+          <div><strong>R2</strong><span>GraphQL</span></div>
+          <div><strong>Queues</strong><span>GraphQL</span></div>
+          <div><strong>Hyperdrive</strong><span>GraphQL</span></div>
+          <div><strong>Browser Run</strong><span>GraphQL</span></div>
+          <div><strong>Workflows</strong><span>GraphQL</span></div>
+          <div><strong>Workers AI</strong><span>GraphQL</span></div>
+          <div><strong>Durable Objects</strong><span>GraphQL</span></div>
+          <div><strong>Analytics & Logs</strong><span>部分支持</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section privacy-band" id="privacy" aria-labelledby="privacy-title">
+      <div>
+        <p class="eyebrow">隐私设计</p>
+        <h2 id="privacy-title">没有托管账号。不会转售配额遥测。不会请求宽泛浏览权限。</h2>
+        <a class="button" href="privacy.html">阅读隐私政策</a>
+      </div>
+      <div class="privacy-list">
+        <article>
+          <h3>只读 Cloudflare 访问</h3>
+          <p>扩展适合使用仅包含账号分析和目标产品读取权限的 Cloudflare API Token。</p>
+        </article>
+        <article>
+          <h3>浏览器本地缓存</h3>
+          <p>设置、最新遥测和历史样本会保留在 Chrome 本地存储中，除非你主动导出 JSON 文件。</p>
+        </article>
+        <article>
+          <h3>清晰的数据路径</h3>
+          <p>Quota Monitor 从你的浏览器直接访问 Cloudflare API。SignalWise 不为这个工具运营接收 Token 或遥测数据的后端。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="cta-band" id="install" aria-labelledby="install-title">
+      <div class="cta-panel">
+        <div>
+          <h2 id="install-title">部署站点。安装扩展。盯住限制。</h2>
+          <p>静态站目标：quota.thesignalwise.com。运行时目标：Chrome MV3 加 Cloudflare 只读遥测。</p>
+        </div>
+        <a class="button button--dark" href="https://github.com/thesignalwise/cloudflare-quota-monitor" target="_blank" rel="noreferrer">打开仓库</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>© 2026 SignalWise。Cloudflare Quota Monitor 是独立工具。</span>
+      <nav class="footer-links" aria-label="页脚导航">
+        <a href="terms.html">条款</a>
+        <a href="privacy.html">隐私</a>
+        <a href="../" lang="en" hreflang="en">English</a>
+        <a href="https://thesignalwise.com" target="_blank" rel="noreferrer">SignalWise</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cloudflare Quota Monitor is a local-first dashboard for watching free-tier usage across Cloudflare Workers, R2, D1, KV, Pages, Queues, and more." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <meta name="author" content="SignalWise" />
+  <meta property="og:site_name" content="SignalWise" />
+  <meta property="og:title" content="Cloudflare Quota Monitor" />
+  <meta property="og:description" content="Local-first visibility for Cloudflare free-tier quota pressure." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://quota.thesignalwise.com/" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:locale:alternate" content="zh_CN" />
+  <meta property="og:image" content="https://quota.thesignalwise.com/assets/og-image.png" />
+  <meta property="og:image:secure_url" content="https://quota.thesignalwise.com/assets/og-image.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Cloudflare Quota Monitor dashboard preview" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Cloudflare Quota Monitor" />
+  <meta name="twitter:description" content="Local-first visibility for Cloudflare free-tier quota pressure." />
+  <meta name="twitter:image" content="https://quota.thesignalwise.com/assets/og-image.png" />
+  <meta name="twitter:image:alt" content="Cloudflare Quota Monitor dashboard preview" />
+  <meta name="theme-color" content="#f38020" />
+  <title>Cloudflare Quota Monitor - SignalWise</title>
+  <link rel="canonical" href="https://quota.thesignalwise.com/" />
+  <link rel="alternate" hreflang="en" href="https://quota.thesignalwise.com/" />
+  <link rel="alternate" hreflang="zh-CN" href="https://quota.thesignalwise.com/zh-CN/" />
+  <link rel="alternate" hreflang="x-default" href="https://quota.thesignalwise.com/" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="alternate" type="text/markdown" href="https://quota.thesignalwise.com/llms.txt" title="llms.txt" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preload" as="image" href="assets/quota-logo.svg" />
+  <link rel="stylesheet" href="site.css" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Cloudflare Quota Monitor",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Chrome",
+      "url": "https://quota.thesignalwise.com/",
+      "description": "A local-first dashboard for watching free-tier usage across Cloudflare Workers, R2, D1, KV, Pages, Queues, and more.",
+      "image": "https://quota.thesignalwise.com/assets/og-image.png",
+      "publisher": {
+        "@type": "Organization",
+        "name": "SignalWise",
+        "url": "https://thesignalwise.com/"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="nav-shell">
+      <a class="brand-link" href="index.html" aria-label="Cloudflare Quota Monitor home">
+        <img src="assets/quota-logo.svg" alt="" />
+        <span class="brand-wordmark">
+          <strong>Quota Monitor</strong>
+          <span>SignalWise</span>
+        </span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#coverage">Coverage</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#api-setup">API setup</a>
+        <a href="#install">Install</a>
+        <a href="terms.html">Terms</a>
+      </nav>
+      <div class="nav-actions">
+        <div class="language-switcher" aria-label="Language switcher">
+          <span aria-current="true">EN</span>
+          <a href="zh-CN/" lang="zh-CN" hreflang="zh-CN">中文</a>
+        </div>
+        <a class="button button--primary" href="https://github.com/thesignalwise/cloudflare-quota-monitor" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 18c-2.2.7-2.2-1.1-3.1-1.3M15.5 21v-3.9c0-1.1.1-1.5-.5-2.1 2.8-.3 5.7-1.4 5.7-6.1 0-1.4-.5-2.5-1.3-3.4.1-.3.6-1.7-.1-3.4 0 0-1.1-.3-3.5 1.3a12 12 0 0 0-6.4 0C7 1.8 5.9 2.1 5.9 2.1c-.7 1.7-.2 3.1-.1 3.4A5.1 5.1 0 0 0 4.5 9c0 4.7 2.9 5.8 5.7 6.1-.4.4-.7.9-.8 1.7V21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">quota.thesignalwise.com</p>
+        <h1 id="hero-title">Cloudflare<br />Quota<br />Monitor</h1>
+        <p>Watch free-tier usage pressure across Cloudflare developer products from a compact, local-first dashboard. Read-only telemetry, no backend, no hosted credential vault.</p>
+        <div class="hero-actions">
+          <a class="button button--primary" href="https://github.com/thesignalwise/cloudflare-quota-monitor" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Install from source
+          </a>
+          <a class="button" href="#coverage">View coverage</a>
+        </div>
+        <ul class="trust-strip" aria-label="Product qualities">
+          <li>Chrome MV3</li>
+          <li>Read-only API token</li>
+          <li>Local storage only</li>
+          <li>13 service groups</li>
+        </ul>
+      </div>
+
+      <figure class="product-shot" aria-label="Product dashboard preview">
+        <div class="product-window">
+          <div class="window-top">
+            <div class="traffic" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="window-url">quota.thesignalwise.com/dashboard</div>
+          </div>
+          <div class="dashboard-preview">
+            <aside class="preview-sidebar" aria-hidden="true">
+              <div class="preview-brand">
+                <img class="mini-logo" src="assets/favicon.svg" alt="" />
+                Quota Monitor
+              </div>
+              <div class="preview-menu">
+                <span class="active">Dashboard</span>
+                <span>API Configuration</span>
+                <span>Monitored Services</span>
+                <span>Sync Schedule</span>
+                <span>Privacy</span>
+              </div>
+            </aside>
+            <div class="preview-main">
+              <div class="preview-header">
+                <div>
+                  <h2>Free tier pressure</h2>
+                  <p>Sorted by quota risk and last successful sync</p>
+                </div>
+                <span class="sync-badge">Synced 09:42</span>
+              </div>
+              <div class="metric-grid">
+                <div class="metric">
+                  <span>R2 Class A</span>
+                  <strong>82%</strong>
+                  <div class="meter warn"><i style="width: 82%"></i></div>
+                </div>
+                <div class="metric">
+                  <span>Workers</span>
+                  <strong>41%</strong>
+                  <div class="meter"><i style="width: 41%"></i></div>
+                </div>
+                <div class="metric">
+                  <span>AI Neurons</span>
+                  <strong>94%</strong>
+                  <div class="meter danger"><i style="width: 94%"></i></div>
+                </div>
+              </div>
+              <div class="service-table" aria-hidden="true">
+                <div class="service-row"><strong>R2 Storage</strong><span>7.8 GB of 10 GB</span><em class="pill watch">Watch</em></div>
+                <div class="service-row"><strong>D1 Rows Read</strong><span>1.6M of 5M</span><em class="pill">Healthy</em></div>
+                <div class="service-row"><strong>Pages Builds</strong><span>186 of 500</span><em class="pill">Healthy</em></div>
+                <div class="service-row"><strong>Workers AI</strong><span>9.4K of 10K</span><em class="pill hot">Critical</em></div>
+                <div class="service-row"><strong>Queues</strong><span>232K billable ops</span><em class="pill">Healthy</em></div>
+                <div class="service-row"><strong>KV Reads</strong><span>61K of 100K</span><em class="pill watch">Watch</em></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption class="floating-alert">
+          <strong>Before the free tier bites.</strong>
+          <span>Risk bands highlight the counters that need attention first.</span>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="section" id="features" aria-labelledby="features-title">
+      <div class="section-header">
+        <h2 id="features-title">Built for people who run small Cloudflare stacks.</h2>
+        <p>Quota Monitor is intentionally narrow: it reads usage signals, caches them locally, and makes limits easier to scan before a project surprises you.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>Pressure-first dashboard</h3>
+          <p>Sort counters by usage percentage, risk state, and recency so noisy low-risk metrics stay out of the way.</p>
+        </article>
+        <article class="feature-card">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 4.2 2.8 8.1 7 10 4.2-1.9 7-5.8 7-10V6l-7-3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>Local-first credentials</h3>
+          <p>Your Cloudflare API token is stored in Chrome local storage and sent only to Cloudflare APIs.</p>
+        </article>
+        <article class="feature-card">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 18.5h12a3 3 0 0 0 .5-5.96A5 5 0 0 0 9 10a3.8 3.8 0 0 0-3 8.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8v8m0 0-3-3m3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>Portable config</h3>
+          <p>Import and export a local JSON configuration when you want to move setup between browser profiles.</p>
+        </article>
+        <article class="feature-card">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="2"/></svg>
+          <h3>Scheduled checks</h3>
+          <p>Use Chrome alarms to refresh telemetry on a daily cadence without a hosted worker or account backend.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section api-guide" id="api-setup" aria-labelledby="api-setup-title">
+      <div class="section-header">
+        <h2 id="api-setup-title">Create the right Cloudflare API token in a few minutes.</h2>
+        <p>Cloudflare calls this an API Token. Use a scoped Custom token, not the legacy Global API Key, so the extension only receives read access to the account you choose.</p>
+      </div>
+      <div class="setup-steps">
+        <article>
+          <span>1</span>
+          <h3>Open API Tokens</h3>
+          <p>In the Cloudflare dashboard, open <strong>My Profile → API Tokens</strong>, select <strong>Create Token</strong>, then choose <strong>Get started</strong> under Custom token.</p>
+          <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">Open Cloudflare tokens</a>
+        </article>
+        <article>
+          <span>2</span>
+          <h3>Add read permissions</h3>
+          <p>Name it <strong>Quota Monitor Read Only</strong>. Add <strong>Account → Account Analytics → Read</strong> first, then add read permissions for the Cloudflare products you want to monitor.</p>
+        </article>
+        <article>
+          <span>3</span>
+          <h3>Scope and copy</h3>
+          <p>Set Account Resources to the account you want to monitor. Continue to summary, create the token, copy it once, then paste it into the extension with your Account ID.</p>
+        </article>
+      </div>
+      <div class="permission-panel" aria-label="Recommended Cloudflare API token permissions">
+        <div>
+          <h3>Recommended permissions</h3>
+          <p>Start with the required permissions, then add optional product reads only for services you use.</p>
+        </div>
+        <div class="permission-list">
+          <div><strong>Required</strong><span>Account Analytics: Read</span></div>
+          <div><strong>Token/account check</strong><span>User Details: Read · Memberships: Read</span></div>
+          <div><strong>Core developer products</strong><span>Workers Scripts: Read · Workers KV Storage: Read · Workers R2 Storage: Read · D1: Read</span></div>
+          <div><strong>Optional coverage</strong><span>Cloudflare Pages: Read · Queues: Read · Hyperdrive: Read · Workers AI: Read · Zero Trust: Read</span></div>
+        </div>
+      </div>
+      <p class="doc-note">Cloudflare documents Custom token setup, Account Analytics read access, and account ID lookup in its official docs.</p>
+    </section>
+
+    <section class="split-band" id="coverage" aria-labelledby="coverage-title">
+      <div class="split-inner">
+        <div>
+          <h2 id="coverage-title">Coverage for the Cloudflare products that quietly accumulate usage.</h2>
+          <p>Validated counters are shown directly. When Cloudflare does not expose an exact quota counter through public APIs, the UI marks it unavailable instead of pretending zero is safe.</p>
+        </div>
+        <div class="coverage-list" aria-label="Monitored services">
+          <div><strong>Workers</strong><span>GraphQL</span></div>
+          <div><strong>Pages</strong><span>REST</span></div>
+          <div><strong>KV</strong><span>GraphQL</span></div>
+          <div><strong>D1</strong><span>GraphQL</span></div>
+          <div><strong>R2</strong><span>GraphQL</span></div>
+          <div><strong>Queues</strong><span>GraphQL</span></div>
+          <div><strong>Hyperdrive</strong><span>GraphQL</span></div>
+          <div><strong>Browser Run</strong><span>GraphQL</span></div>
+          <div><strong>Workflows</strong><span>GraphQL</span></div>
+          <div><strong>Workers AI</strong><span>GraphQL</span></div>
+          <div><strong>Durable Objects</strong><span>GraphQL</span></div>
+          <div><strong>Analytics & Logs</strong><span>Partial</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section privacy-band" id="privacy" aria-labelledby="privacy-title">
+      <div>
+        <p class="eyebrow">Privacy posture</p>
+        <h2 id="privacy-title">No hosted account. No quota telemetry resale. No broad browsing permissions.</h2>
+        <a class="button" href="website-privacy.html">Read privacy policy</a>
+      </div>
+      <div class="privacy-list">
+        <article>
+          <h3>Read-only Cloudflare access</h3>
+          <p>The extension is designed for API tokens scoped to account analytics and read permissions for the Cloudflare products you want to monitor.</p>
+        </article>
+        <article>
+          <h3>Browser-local cache</h3>
+          <p>Settings, latest telemetry, and history samples stay in Chrome local storage unless you intentionally export a JSON file.</p>
+        </article>
+        <article>
+          <h3>Transparent data path</h3>
+          <p>Quota Monitor talks to Cloudflare APIs from your browser. SignalWise does not operate a backend service for this tool.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="cta-band" id="install" aria-labelledby="install-title">
+      <div class="cta-panel">
+        <div>
+          <h2 id="install-title">Deploy the site. Install the extension. Watch the limits.</h2>
+          <p>Static website target: quota.thesignalwise.com. Runtime target: Chrome MV3 with Cloudflare read-only telemetry.</p>
+        </div>
+        <a class="button button--dark" href="https://github.com/thesignalwise/cloudflare-quota-monitor" target="_blank" rel="noreferrer">Open repository</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>© 2026 SignalWise. Cloudflare Quota Monitor is an independent tool.</span>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="terms.html">Terms</a>
+        <a href="website-privacy.html">Privacy</a>
+        <a href="zh-CN/" lang="zh-CN" hreflang="zh-CN">中文</a>
+        <a href="https://thesignalwise.com" target="_blank" rel="noreferrer">SignalWise</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
