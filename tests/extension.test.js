@@ -86,7 +86,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
   const packageJson = readJson('package.json');
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, '0.3.5');
+  assert.equal(manifest.version, '0.3.6');
   assert.equal(packageJson.version, manifest.version);
   assert.equal(manifest.default_locale, 'en');
   assert.equal(manifest.name, '__MSG_extName__');
@@ -275,7 +275,7 @@ test('privacy and release packaging surfaces are present', () => {
   const privacyMd = readText('PRIVACY.md');
   const packageScript = readText('scripts/package-extension.mjs');
 
-  assert.equal(manifest.version, '0.3.5');
+  assert.equal(manifest.version, '0.3.6');
   assert.equal(packageJson.scripts.package, 'node scripts/package-extension.mjs');
   assert.match(privacyHtml, /Limited Use disclosure/);
   assert.match(privacyMd, /Chrome Web Store User Data Policy/);
