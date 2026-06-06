@@ -15,7 +15,7 @@
   <text x="196" y="102" fill="#1B1C1D" font-family="Aptos Display, Segoe UI, sans-serif" font-size="36" font-weight="800">Quota Monitor</text>
   <text x="198" y="137" fill="#7C6B5B" font-family="Segoe UI, sans-serif" font-size="19" font-weight="800" letter-spacing="2">SIGNALWISE</text>
   <circle cx="73" cy="234" r="7" fill="#F38020"/>
-  <text x="92" y="244" fill="#4D4F52" font-family="Segoe UI, sans-serif" font-size="24" font-weight="900" letter-spacing="2">QUOTA.THESIGNALWISE.COM</text>
+  <text x="92" y="244" fill="#4D4F52" font-family="Segoe UI, sans-serif" font-size="18" font-weight="900" letter-spacing="1.2">CLOUDFLARE-QUOTA-MONITOR.THESIGNALWISE.COM</text>
   <text x="72" y="332" fill="#1B1C1D" font-family="Aptos Display, Segoe UI, sans-serif" font-size="82" font-weight="900">Cloudflare Quota</text>
   <text x="72" y="420" fill="#1B1C1D" font-family="Aptos Display, Segoe UI, sans-serif" font-size="82" font-weight="900">Monitor</text>
   <text x="76" y="476" fill="#4D4F52" font-family="Segoe UI, sans-serif" font-size="29" font-weight="600">Local-first visibility for Cloudflare free-tier usage pressure.</text>

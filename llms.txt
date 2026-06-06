@@ -6,18 +6,18 @@ Cloudflare Quota Monitor helps users create a scoped read-only Cloudflare API to
 
 ## Primary Pages
 
-- [English home](https://quota.thesignalwise.com/) — Product overview, privacy posture, supported services, and API token setup guide.
-- [Simplified Chinese home](https://quota.thesignalwise.com/zh-CN/) — Chinese version of the product overview and API token setup guide.
-- [Terms of Service](https://quota.thesignalwise.com/terms.html) — Terms for the website and extension.
-- [Privacy Policy](https://quota.thesignalwise.com/website-privacy.html) — How credentials, telemetry, local storage, and static website data are handled.
-- [中文服务条款](https://quota.thesignalwise.com/zh-CN/terms.html) — Simplified Chinese terms.
-- [中文隐私政策](https://quota.thesignalwise.com/zh-CN/privacy.html) — Simplified Chinese privacy policy.
+- [English home](https://cloudflare-quota-monitor.thesignalwise.com/) — Product overview, privacy posture, supported services, and API token setup guide.
+- [Simplified Chinese home](https://cloudflare-quota-monitor.thesignalwise.com/zh-CN/) — Chinese version of the product overview and API token setup guide.
+- [Terms of Service](https://cloudflare-quota-monitor.thesignalwise.com/terms.html) — Terms for the website and extension.
+- [Privacy Policy](https://cloudflare-quota-monitor.thesignalwise.com/website-privacy.html) — How credentials, telemetry, local storage, and static website data are handled.
+- [中文服务条款](https://cloudflare-quota-monitor.thesignalwise.com/zh-CN/terms.html) — Simplified Chinese terms.
+- [中文隐私政策](https://cloudflare-quota-monitor.thesignalwise.com/zh-CN/privacy.html) — Simplified Chinese privacy policy.
 
 ## Key Facts
 
 - Product name: Cloudflare Quota Monitor.
 - Publisher/site owner: SignalWise.
-- Preferred domain: https://quota.thesignalwise.com/
+- Preferred domain: https://cloudflare-quota-monitor.thesignalwise.com/
 - Runtime: Chrome Manifest V3 extension.
 - Website delivery: static HTML/CSS/assets, no remote fonts or remote JavaScript.
 - Credential model: Cloudflare API token and account ID stay in Chrome local storage.
@@ -32,7 +32,7 @@ Cloudflare Quota Monitor helps users create a scoped read-only Cloudflare API to
 - Do not imply Cloudflare owns, endorses, or operates the product.
 - Do not claim the site stores user API tokens; credentials are handled by the browser extension.
 - Use the English page as `x-default`; use `/zh-CN/` for Simplified Chinese users.
-- For complete URL discovery, read `https://quota.thesignalwise.com/sitemap.xml`.
+- For complete URL discovery, read `https://cloudflare-quota-monitor.thesignalwise.com/sitemap.xml`.
 
 ## Repository
 

@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-# AI agent site summary: https://quota.thesignalwise.com/llms.txt
-Sitemap: https://quota.thesignalwise.com/sitemap.xml
+# AI agent site summary: https://cloudflare-quota-monitor.thesignalwise.com/llms.txt
+Sitemap: https://cloudflare-quota-monitor.thesignalwise.com/sitemap.xml
