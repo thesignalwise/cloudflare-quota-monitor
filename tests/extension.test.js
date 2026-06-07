@@ -39,6 +39,105 @@ function readText(fileName) {
   return fs.readFileSync(path.join(rootDir, fileName), 'utf8');
 }
 
+function extractRuntimeDictionaries() {
+  const source = readText('i18n.js');
+  const start = source.indexOf('const DICTIONARIES = ');
+  const open = source.indexOf('{', start);
+  let depth = 0;
+  let quote = null;
+  let escape = false;
+
+  for (let i = open; i < source.length; i += 1) {
+    const char = source[i];
+    if (quote) {
+      if (escape) {
+        escape = false;
+      } else if (char === '\\') {
+        escape = true;
+      } else if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char;
+      continue;
+    }
+
+    if (char === '{') depth += 1;
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return Function(`return (${source.slice(open, i + 1)});`)();
+      }
+    }
+  }
+
+  throw new Error('Could not extract runtime dictionaries');
+}
+
+function decodeHtmlText(value) {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+}
+
+function collectLocalizableHtmlText(files) {
+  const stableNativeLabels = /^(简体中文|繁體中文|English|日本語|한국어)$/;
+  const properNouns = new Set([
+    'Workers',
+    'GraphQL',
+    'Pages',
+    'REST',
+    'KV',
+    'D1',
+    'R2',
+    'Queues',
+    'Hyperdrive',
+    'Browser Run',
+    'Workers Logs',
+    'Analytics Engine',
+    'Workflows',
+    'Workers AI',
+    'Durable Objects',
+    'MV3',
+    'Account Analytics: Read',
+    'User Details: Read · Memberships: Read',
+    'Cloudflare Pages: Read · Workers Scripts: Read · Workers KV Storage: Read · Workers R2 Storage: Read · D1: Read · Queues: Read · Hyperdrive: Read · Workers AI: Read · Zero Trust: Read'
+  ]);
+  const texts = new Map();
+  const addText = (rawValue, source) => {
+    const text = decodeHtmlText(rawValue.replace(/\s+/g, ' '));
+    if (!text || /^v?\d+\.\d+\.\d+$/.test(text) || /^\d+$/.test(text)) return;
+    if (!/[A-Za-z]/.test(text) || stableNativeLabels.test(text) || properNouns.has(text)) return;
+    if (!texts.has(text)) texts.set(text, new Set());
+    texts.get(text).add(source);
+  };
+
+  files.forEach(file => {
+    const html = readText(file)
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<svg[\s\S]*?<\/svg>/gi, '');
+
+    [...html.matchAll(/<title>([^<>]+)<\/title>|>([^<>]+)</g)].forEach(match => {
+      addText(match[1] || match[2], file);
+    });
+
+    ['placeholder', 'aria-label', 'title'].forEach(attribute => {
+      const regex = new RegExp(`${attribute}=["']([^"']+)["']`, 'gi');
+      [...html.matchAll(regex)].forEach(match => addText(match[1], `${file}@${attribute}`));
+    });
+  });
+
+  return texts;
+}
+
 function assertFile(fileName) {
   assert.equal(fs.existsSync(path.join(rootDir, fileName)), true, `${fileName} should exist`);
 }
@@ -86,7 +185,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
   const packageJson = readJson('package.json');
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, '0.3.6');
+  assert.equal(manifest.version, '0.3.8');
   assert.equal(packageJson.version, manifest.version);
   assert.equal(manifest.default_locale, 'en');
   assert.equal(manifest.name, '__MSG_extName__');
@@ -164,6 +263,16 @@ test('HTML pages use local assets and keep required extension mount points', () 
       ids: ['release-notes']
     }
   ];
+  const expectedSidebarOrder = [
+    'dashboard.html',
+    'options.html',
+    'services.html',
+    'schedule.html',
+    'webdav.html',
+    'release-notes.html',
+    'privacy.html',
+    'about.html'
+  ];
 
   pages.forEach(page => {
     const html = readText(page.file);
@@ -177,6 +286,13 @@ test('HTML pages use local assets and keep required extension mount points', () 
 
     if (page.file !== 'popup.html') {
       assert.match(html, /class=["'][^"']*settings-nav-item/, `${page.file} should use the shared sidebar navigation`);
+      const sidebarLinks = [...html.matchAll(/<a\s+class=["'][^"']*\bsettings-nav-item\b[^"']*["']\s+href=["']([^"']+)["']/g)]
+        .map(match => match[1]);
+      const activeLinks = [...html.matchAll(/<a\s+class=["'][^"']*\bsettings-nav-item\b[^"']*\bis-active\b[^"']*["']\s+href=["']([^"']+)["']/g)]
+        .map(match => match[1]);
+
+      assert.deepEqual(sidebarLinks, expectedSidebarOrder, `${page.file} should keep the sidebar order`);
+      assert.deepEqual(activeLinks, [page.file], `${page.file} should mark only its own sidebar link active`);
       assert.match(html, /href=["']privacy\.html["']/, `${page.file} should link to Privacy Policy`);
       assert.match(html, /href=["']release-notes\.html["']/, `${page.file} should link to Release Notes`);
       assert.match(html, /href=["']https:\/\/cloudflare-quota-monitor\.thesignalwise\.com\/["']/, `${page.file} should link to the official website`);
@@ -185,6 +301,25 @@ test('HTML pages use local assets and keep required extension mount points', () 
   });
 
   assert.doesNotMatch(readText('dashboard.html'), /top-nav__link/, 'dashboard should not use the standalone top navigation');
+
+  const aboutHtml = readText('about.html');
+  [
+    ['zh-CN', '简体中文'],
+    ['zh-TW', '繁體中文'],
+    ['en', 'English'],
+    ['ja', '日本語'],
+    ['ko', '한국어']
+  ].forEach(([value, label]) => {
+    assert.match(
+      aboutHtml,
+      new RegExp(`<option value=["']${value}["'][^>]*data-i18n-static[^>]*>${label}</option>`),
+      `language selector should include stable native label ${label}`
+    );
+  });
+  assert.doesNotMatch(aboutHtml, />Simplified Chinese</);
+  assert.doesNotMatch(aboutHtml, />Traditional Chinese</);
+  assert.doesNotMatch(aboutHtml, />Japanese</);
+  assert.doesNotMatch(aboutHtml, />Korean</);
 });
 
 test('JavaScript files pass syntax checks', () => {
@@ -203,6 +338,29 @@ test('i18n supports the required locales', () => {
     const messages = readJson(`_locales/${locale}/messages.json`);
     assert.equal(typeof messages.extName.message, 'string');
     assert.equal(typeof messages.extDescription.message, 'string');
+  });
+});
+
+test('runtime i18n dictionaries cover localizable HTML text', () => {
+  const dictionaries = extractRuntimeDictionaries();
+  const localizableText = collectLocalizableHtmlText([
+    'popup.html',
+    'dashboard.html',
+    'options.html',
+    'webdav.html',
+    'services.html',
+    'schedule.html',
+    'about.html',
+    'privacy.html',
+    'release-notes.html'
+  ]);
+
+  ['zh-CN', 'zh-TW', 'ja', 'ko'].forEach(locale => {
+    const missing = [...localizableText.entries()]
+      .filter(([text]) => !Object.hasOwn(dictionaries[locale], text))
+      .map(([text, sources]) => `${text} (${[...sources].join(', ')})`);
+
+    assert.deepEqual(missing, [], `${locale} should translate localizable HTML text`);
   });
 });
 
@@ -275,10 +433,17 @@ test('privacy and release packaging surfaces are present', () => {
   const privacyMd = readText('PRIVACY.md');
   const packageScript = readText('scripts/package-extension.mjs');
 
-  assert.equal(manifest.version, '0.3.6');
+  assert.equal(manifest.version, '0.3.8');
   assert.equal(packageJson.scripts.package, 'node scripts/package-extension.mjs');
   assert.match(privacyHtml, /Limited Use disclosure/);
   assert.match(privacyMd, /Chrome Web Store User Data Policy/);
+  assert.match(readText('release-notes.html'), /<h3>v0\.3\.8<\/h3>/);
+  assert.match(readText('release-notes.html'), /Internationalization audit/);
+  assert.match(readText('release-notes.html'), /Translation coverage guard/);
+  assert.match(readText('release-notes.html'), /<h3>v0\.3\.7<\/h3>/);
+  assert.match(readText('release-notes.html'), /Released 2026-06-07/);
+  assert.match(readText('release-notes.html'), /Native language selector/);
+  assert.match(readText('release-notes.html'), /Sidebar navigation order/);
   assert.match(readText('release-notes.html'), /Released 2026-06-01/);
   assert.match(readText('release-notes.html'), /Scheduled sync observability/);
   assert.match(packageScript, /privacy\.html/);
