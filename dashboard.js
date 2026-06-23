@@ -21,12 +21,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const chartModalLatest = document.getElementById('chartModalLatest');
   const chartModalLow = document.getElementById('chartModalLow');
   const chartModalHigh = document.getElementById('chartModalHigh');
+  const dashboardTitle = document.getElementById('dashboardTitle');
+  const dashboardSubtitle = document.getElementById('dashboardSubtitle');
+  const dashboardAccountContext = document.getElementById('dashboardAccountContext');
   const hasChromeStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
   const hasChromeRuntime = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
 
   let currentView = localStorage.getItem('quotaDashboardView') || 'cards';
   let lastQuotas = null;
   let lastHistory = [];
+  let lastOverview = null;
+  let selectedProfileId = new URLSearchParams(window.location.search).get('profile') || '';
   let activeChartKey = null;
   let refreshProgressTimer = null;
   let refreshCompleteTimer = null;
@@ -272,13 +277,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function formatUsed(metric) {
-    if (metric.unavailable || !hasMetricValue(metric.used)) return 'Not available';
+    if (metric.unavailable || !hasMetricValue(metric.used)) return t('Not available');
     return metric.format === 'bytes' ? formatBytes(metric.used) : formatNumber(metric.used);
   }
 
   function formatLimit(metric) {
-    if (metric.unavailable) return metric.limit ? `${formatNumber(metric.limit)} ${metric.unit || ''}`.trim() : 'API metric';
-    if (!hasMetricValue(metric.limit)) return metric.unit || 'tracked';
+    if (metric.unavailable) return metric.limit ? `${formatNumber(metric.limit)} ${metric.unit || ''}`.trim() : t('API metric');
+    if (!hasMetricValue(metric.limit)) return metric.unit || t('tracked');
     const limit = metric.format === 'bytes' ? formatBytes(metric.limit) : formatNumber(metric.limit);
     return `${limit}${metric.unit ? ` ${metric.unit}` : ''}`;
   }
@@ -286,6 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function metricPercentLabel(metric) {
     const percent = displayPercent(metric.percent);
     return percent === null ? 'Info' : `${percent}%`;
+  }
+
+  function t(value) {
+    return window.quotaI18n?.t ? window.quotaI18n.t(value) : value;
   }
 
   function formatMetricValue(metric, value) {
@@ -348,13 +357,13 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="service-icon" aria-hidden="true">${ICONS[metric.icon] || ICONS.graph}</div>
           <div>
             <h3 class="service-title">${escapeHtml(metric.title)}</h3>
-            <p class="service-period">${escapeHtml(metric.period)}</p>
+            <p class="service-period">${escapeHtml(t(metric.period))}</p>
           </div>
         </div>
         <span class="status-badge is-${status.level}">${escapeHtml(metricPercentLabel(metric))}</span>
       </div>
       <p class="dashboard-value">${escapeHtml(formatUsed(metric))}</p>
-      <p class="dashboard-meta">Used / ${escapeHtml(formatLimit(metric))}</p>
+      <p class="dashboard-meta">${escapeHtml(t('Used'))} / ${escapeHtml(formatLimit(metric))}</p>
       <div class="progress" aria-label="${escapeHtml(metric.title)} usage ${progress}%">
         <div class="progress-inner" style="--progress: ${progress}%; --risk-color: ${escapeHtml(riskColor)}"></div>
       </div>
@@ -388,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="service-icon" aria-hidden="true">${ICONS[metric.icon] || ICONS.graph}</div>
         <div>
           <h3>${escapeHtml(metric.title)}</h3>
-          <p>${escapeHtml(metric.period)}</p>
+          <p>${escapeHtml(t(metric.period))}</p>
         </div>
       </div>
       <strong>${escapeHtml(formatUsed(metric))}</strong>
@@ -413,8 +422,8 @@ document.addEventListener('DOMContentLoaded', () => {
     section.innerHTML = `
       <div class="dashboard-group__header">
         <div>
-          <h2>${escapeHtml(group.title)}</h2>
-          <p>${metrics.length} tracked metrics</p>
+          <h2>${escapeHtml(t(group.title))}</h2>
+          <p>${metrics.length} ${escapeHtml(t('tracked metrics'))}</p>
         </div>
         <span class="status-badge is-${status.level}">${escapeHtml(status.label)}</span>
       </div>
@@ -495,17 +504,215 @@ document.addEventListener('DOMContentLoaded', () => {
     }, success ? 4200 : 7000);
   }
 
+  function accountSuffix(accountId) {
+    const value = String(accountId || '').trim();
+    return value ? `...${value.slice(-5)}` : t('No account ID');
+  }
+
+  function accountStatusLabel(status) {
+    const label = {
+      critical: 'Critical',
+      watch: 'Watch',
+      ok: 'Healthy',
+      error: 'Error',
+      info: 'Info'
+    }[status] || 'Info';
+    return t(label);
+  }
+
+  function accountStatusLevel(status) {
+    return {
+      critical: 'danger',
+      watch: 'warning',
+      ok: 'good',
+      error: 'danger',
+      info: 'info'
+    }[status] || 'info';
+  }
+
+  function accountPercentLabel(account) {
+    const percent = displayPercent(account.topPercent);
+    return percent === null ? '--' : `${percent}%`;
+  }
+
+  function formatRelativeTime(timestamp) {
+    const value = Number(timestamp);
+    if (!Number.isFinite(value) || value <= 0) return t('No sync');
+    const seconds = Math.max(0, Math.round((Date.now() - value) / 1000));
+    if (seconds < 45) return t('Just now');
+    const locale = window.quotaI18n?.locale || document.documentElement.lang || navigator.language || 'en';
+    const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+    if (seconds < 3600) return formatter.format(-Math.round(seconds / 60), 'minute');
+    if (seconds < 86400) return formatter.format(-Math.round(seconds / 3600), 'hour');
+    return formatter.format(-Math.round(seconds / 86400), 'day');
+  }
+
+  function rankedAccounts(overview) {
+    return [...(overview?.accounts || [])]
+      .filter(account => account.enabled !== false)
+      .sort((a, b) => {
+        const statusRank = { error: 4, critical: 3, watch: 2, ok: 1, info: 0 };
+        const statusDelta = (statusRank[b.status] || 0) - (statusRank[a.status] || 0);
+        if (statusDelta) return statusDelta;
+        return (Number(b.topPercent) || -1) - (Number(a.topPercent) || -1);
+      });
+  }
+
+  function createAccountStat(label, value, status) {
+    return `
+      <article class="account-stat is-${escapeHtml(accountStatusLevel(status))}">
+        <span>${escapeHtml(t(label))}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </article>
+    `;
+  }
+
+  function createPriorityItem(account) {
+    const level = accountStatusLevel(account.status);
+    return `
+      <article class="priority-account is-${level}">
+        <div>
+          <strong>${escapeHtml(account.label || t('Cloudflare account'))}</strong>
+          <span>${escapeHtml(account.lastError || account.topMetric || t('No usage data'))}</span>
+        </div>
+        <em>${escapeHtml(accountPercentLabel(account))}</em>
+        <button class="btn btn--secondary" type="button" data-profile-id="${escapeHtml(account.profileId)}">${escapeHtml(t('View details'))}</button>
+      </article>
+    `;
+  }
+
+  function createAccountRow(account) {
+    const level = accountStatusLevel(account.status);
+    const progress = progressPercent(account.topPercent);
+    const riskColor = riskColorForPercent(account.topPercent);
+    return `
+      <article class="account-health-row is-${level}" data-profile-id="${escapeHtml(account.profileId)}" tabindex="0" role="button">
+        <div class="account-health-main">
+          <strong>${escapeHtml(account.label || t('Cloudflare account'))}</strong>
+          <span>${escapeHtml(accountSuffix(account.accountId))}</span>
+        </div>
+        <span>${escapeHtml(account.lastError || account.topMetric || t('No usage data'))}</span>
+        <div class="progress" aria-label="${escapeHtml(account.label || t('Account'))} ${escapeHtml(t('Overall risk'))} ${progress}%">
+          <div class="progress-inner" style="--progress: ${progress}%; --risk-color: ${escapeHtml(riskColor)}"></div>
+        </div>
+        <strong>${escapeHtml(accountPercentLabel(account))}</strong>
+        <span>${escapeHtml(`${account.criticalCount || 0} / ${account.watchCount || 0}`)}</span>
+        <span>${escapeHtml(formatRelativeTime(account.lastUpdated))}</span>
+        <span class="status-badge is-${level}">${escapeHtml(accountStatusLabel(account.status))}</span>
+        <button class="icon-button" type="button" data-profile-id="${escapeHtml(account.profileId)}" aria-label="${escapeHtml(t('Open account details'))}">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </article>
+    `;
+  }
+
+  function renderAccountOverview(overview) {
+    const accounts = rankedAccounts(overview);
+    const summary = overview?.summary || {};
+    updateDashboardHeading('overview');
+    contentEl.innerHTML = '';
+    contentEl.className = 'dashboard-content account-overview-view';
+    if (!accounts.length) {
+      renderEmpty();
+      return;
+    }
+
+    const priorityAccounts = accounts.filter(account => ['critical', 'watch', 'error'].includes(account.status)).slice(0, 3);
+    const normalCount = accounts.filter(account => account.status === 'ok').length;
+    const errorCount = summary.errorCount || accounts.filter(account => account.status === 'error').length;
+    contentEl.innerHTML = `
+      <section class="account-summary-grid">
+        ${createAccountStat('Critical accounts', summary.criticalCount || 0, 'critical')}
+        ${createAccountStat('Watch accounts', summary.watchCount || 0, 'watch')}
+        ${createAccountStat('Sync errors', errorCount, errorCount ? 'error' : 'ok')}
+        ${createAccountStat('Monitored accounts', summary.total || accounts.length, 'info')}
+      </section>
+      <section class="priority-panel">
+        <div class="dashboard-section-heading">
+          <div>
+            <h2>${escapeHtml(t('Needs attention'))}</h2>
+            <p>${escapeHtml(t('Accounts sorted by highest quota pressure and sync health.'))}</p>
+          </div>
+        </div>
+        <div class="priority-grid">
+          ${(priorityAccounts.length ? priorityAccounts : accounts.slice(0, 3)).map(createPriorityItem).join('')}
+        </div>
+      </section>
+      <section class="account-health-panel">
+        <div class="dashboard-section-heading">
+          <div>
+            <h2>${escapeHtml(t('Account health'))}</h2>
+            <p>${escapeHtml(t('Click any row to drill into service-level quota details.'))}</p>
+          </div>
+          <span class="summary-badge">${escapeHtml(normalCount)} ${escapeHtml(t('healthy'))}</span>
+        </div>
+        <div class="account-health-table">
+          <div class="account-health-head">
+            <span>${escapeHtml(t('Account'))}</span>
+            <span>${escapeHtml(t('Highest risk'))}</span>
+            <span>${escapeHtml(t('Usage'))}</span>
+            <span>${escapeHtml(t('Risk'))}</span>
+            <span>C / W</span>
+            <span>${escapeHtml(t('Last sync'))}</span>
+            <span>${escapeHtml(t('Status'))}</span>
+            <span></span>
+          </div>
+          ${accounts.map(createAccountRow).join('')}
+        </div>
+      </section>
+    `;
+
+    dashboardSummary.textContent = summary.lastUpdated
+      ? `${t('Last sync')} ${formatRelativeTime(summary.lastUpdated)}`
+      : t('Account overview');
+  }
+
+  function profileById(profileId) {
+    return (lastOverview?.accounts || []).find(account => account.profileId === profileId) || null;
+  }
+
+  function updateDashboardHeading(mode) {
+    if (!dashboardTitle || !dashboardSubtitle || !dashboardAccountContext) return;
+
+    if (mode === 'detail') {
+      const account = profileById(selectedProfileId);
+      dashboardTitle.textContent = account?.label || t('Account details');
+      dashboardSubtitle.textContent = account
+        ? `${t('Service-level quota details')} · ${accountSuffix(account.accountId)}`
+        : t('Service-level quota details');
+      dashboardAccountContext.hidden = false;
+      dashboardAccountContext.innerHTML = `
+        <label for="dashboardAccountSelect">${escapeHtml(t('Viewing account'))}</label>
+        <select id="dashboardAccountSelect">
+          ${(lastOverview?.accounts || []).map(item => `
+            <option value="${escapeHtml(item.profileId)}"${item.profileId === selectedProfileId ? ' selected' : ''}>${escapeHtml(item.label || t('Cloudflare account'))}</option>
+          `).join('')}
+        </select>
+        <a href="dashboard.html">${escapeHtml(t('Back to overview'))}</a>
+      `;
+      return;
+    }
+
+    dashboardTitle.textContent = t('Multi-account Overview');
+    dashboardSubtitle.textContent = t('Monitor quota health across every configured Cloudflare account.');
+    dashboardAccountContext.hidden = true;
+    dashboardAccountContext.innerHTML = '';
+  }
+
   function renderEmpty() {
     contentEl.innerHTML = '';
     const empty = document.createElement('div');
     empty.className = 'state-panel is-error';
-    empty.textContent = 'No quota data available. Configure your API token and account ID in Settings, then refresh.';
+    empty.textContent = t('No quota data available. Configure your API token and account ID in Settings, then refresh.');
     contentEl.appendChild(empty);
-    dashboardSummary.textContent = 'Setup needed';
+    dashboardSummary.textContent = t('Setup needed');
   }
 
   function renderDashboard(quotas, history) {
     contentEl.innerHTML = '';
+    updateDashboardHeading(selectedProfileId ? 'detail' : 'overview');
     updateViewButtons();
     if (!quotas) {
       renderEmpty();
@@ -524,6 +731,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadAndRender() {
     if (!hasChromeStorage) {
+      if (!selectedProfileId) {
+        lastOverview = {
+          summary: { total: 5, criticalCount: 1, watchCount: 2, errorCount: 1, lastUpdated: Date.now() - 120000 },
+          accounts: [
+            { profileId: 'profile-production', label: 'Production', accountId: '01a91f', topMetric: 'D1 Rows Written', topPercent: 0.94, criticalCount: 1, watchCount: 0, status: 'critical', lastUpdated: Date.now() - 120000 },
+            { profileId: 'profile-ai-lab', label: 'AI Lab', accountId: '4e88c4', topMetric: 'Workers AI Neurons', topPercent: 0.88, criticalCount: 0, watchCount: 1, status: 'watch', lastUpdated: Date.now() - 120000 },
+            { profileId: 'profile-client-pages', label: 'Client Pages', accountId: '21b672', topMetric: 'Pages Builds', topPercent: 0.76, criticalCount: 0, watchCount: 1, status: 'watch', lastUpdated: Date.now() - 300000 },
+            { profileId: 'profile-dev', label: 'Dev Sandbox', accountId: 'aa42d0', topMetric: 'Workers Requests', topPercent: 0.43, criticalCount: 0, watchCount: 0, status: 'ok', lastUpdated: Date.now() - 480000 },
+            { profileId: 'profile-archive', label: 'Archive', accountId: 'be19ab', topMetric: 'Sync failed', topPercent: null, criticalCount: 0, watchCount: 0, status: 'error', lastError: 'Token expired', lastUpdated: Date.now() - 600000 }
+          ]
+        };
+        renderAccountOverview(lastOverview);
+        dashboardSummary.textContent = 'Demo account overview';
+        return;
+      }
+      lastOverview = {
+        summary: { total: 5, criticalCount: 1, watchCount: 2, errorCount: 1, lastUpdated: Date.now() - 120000 },
+        accounts: [
+          { profileId: 'profile-production', label: 'Production', accountId: '01a91f', topMetric: 'D1 Rows Written', topPercent: 0.94, criticalCount: 1, watchCount: 0, status: 'critical', lastUpdated: Date.now() - 120000 },
+          { profileId: 'profile-ai-lab', label: 'AI Lab', accountId: '4e88c4', topMetric: 'Workers AI Neurons', topPercent: 0.88, criticalCount: 0, watchCount: 1, status: 'watch', lastUpdated: Date.now() - 120000 },
+          { profileId: 'profile-client-pages', label: 'Client Pages', accountId: '21b672', topMetric: 'Pages Builds', topPercent: 0.76, criticalCount: 0, watchCount: 1, status: 'watch', lastUpdated: Date.now() - 300000 },
+          { profileId: 'profile-dev', label: 'Dev Sandbox', accountId: 'aa42d0', topMetric: 'Workers Requests', topPercent: 0.43, criticalCount: 0, watchCount: 0, status: 'ok', lastUpdated: Date.now() - 480000 },
+          { profileId: 'profile-archive', label: 'Archive', accountId: 'be19ab', topMetric: 'Sync failed', topPercent: null, criticalCount: 0, watchCount: 0, status: 'error', lastError: 'Token expired', lastUpdated: Date.now() - 600000 }
+        ]
+      };
       const demoHistory = Array.from({ length: 12 }, (_, index) => ({
         quotas: {
           ...DEMO_QUOTAS,
@@ -540,6 +772,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (hasChromeRuntime && !selectedProfileId) {
+      chrome.runtime.sendMessage({ action: 'getAccountOverview' }, response => {
+        lastOverview = response ? response.data : null;
+        renderAccountOverview(lastOverview);
+      });
+      return;
+    }
+
+    if (hasChromeRuntime && selectedProfileId) {
+      chrome.runtime.sendMessage({ action: 'getAccountOverview' }, overviewResponse => {
+        lastOverview = overviewResponse ? overviewResponse.data : null;
+        chrome.runtime.sendMessage({ action: 'getQuotas', profileId: selectedProfileId }, response => {
+          lastQuotas = response ? response.data : null;
+          lastHistory = response ? response.history || [] : [];
+          renderDashboard(lastQuotas, lastHistory);
+        });
+      });
+      return;
+    }
+
     chrome.storage.local.get(['quotas', 'history'], res => {
       lastQuotas = res.quotas;
       lastHistory = res.history || [];
@@ -550,6 +802,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function setViewMode(mode) {
     currentView = mode;
     localStorage.setItem('quotaDashboardView', currentView);
+    if (!selectedProfileId) {
+      renderAccountOverview(lastOverview);
+      return;
+    }
     renderDashboard(lastQuotas, lastHistory);
   }
 
@@ -557,11 +813,28 @@ document.addEventListener('DOMContentLoaded', () => {
   listViewBtn.addEventListener('click', () => setViewMode('list'));
 
   contentEl.addEventListener('click', event => {
+    const accountTarget = event.target.closest('[data-profile-id]');
+    if (accountTarget && !accountTarget.closest('.chart-container')) {
+      selectedProfileId = accountTarget.dataset.profileId;
+      window.history.pushState({}, '', `dashboard.html?profile=${encodeURIComponent(selectedProfileId)}`);
+      loadAndRender();
+      return;
+    }
+
     const target = event.target.closest('[data-chart-key]');
     if (target) openChartModal(target.dataset.chartKey);
   });
 
   contentEl.addEventListener('keydown', event => {
+    const accountTarget = event.target.closest('[data-profile-id]');
+    if (accountTarget && ['Enter', ' '].includes(event.key)) {
+      event.preventDefault();
+      selectedProfileId = accountTarget.dataset.profileId;
+      window.history.pushState({}, '', `dashboard.html?profile=${encodeURIComponent(selectedProfileId)}`);
+      loadAndRender();
+      return;
+    }
+
     const target = event.target.closest('[data-chart-key]');
     if (!target || !['Enter', ' '].includes(event.key)) return;
     event.preventDefault();
@@ -578,6 +851,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (dashboardAccountContext) {
+    dashboardAccountContext.addEventListener('change', event => {
+      if (!event.target.matches('#dashboardAccountSelect')) return;
+      selectedProfileId = event.target.value;
+      window.history.pushState({}, '', `dashboard.html?profile=${encodeURIComponent(selectedProfileId)}`);
+      loadAndRender();
+    });
+  }
+
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && chartModal && !chartModal.hidden) closeChartModal();
   });
@@ -591,7 +873,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setRefreshButtonState(true);
     startRefreshProgress();
-    chrome.runtime.sendMessage({ action: 'refreshQuotas', source: 'dashboard' }, () => {
+    chrome.runtime.sendMessage({ action: 'refreshQuotas', source: 'dashboard', profileId: selectedProfileId }, () => {
       loadAndRender();
       setRefreshButtonState(false);
       const lastError = chrome.runtime.lastError;
@@ -604,8 +886,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.addEventListener('resize', () => {
-    renderDashboard(lastQuotas, lastHistory);
-    if (activeChartKey) openChartModal(activeChartKey);
+    if (selectedProfileId) {
+      renderDashboard(lastQuotas, lastHistory);
+      if (activeChartKey) openChartModal(activeChartKey);
+    } else if (lastOverview) {
+      renderAccountOverview(lastOverview);
+    }
+  });
+
+  window.addEventListener('quota-i18n-ready', () => {
+    if (selectedProfileId) {
+      renderDashboard(lastQuotas, lastHistory);
+    } else if (lastOverview) {
+      renderAccountOverview(lastOverview);
+    }
   });
 
   loadAndRender();

@@ -3,6 +3,7 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const vm = require('node:vm');
 
 const rootDir = path.resolve(__dirname, '..');
 const env = loadEnv(path.join(rootDir, '.env'));
@@ -185,7 +186,7 @@ test('manifest exposes the expected Chrome extension contract', () => {
   const packageJson = readJson('package.json');
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, '0.3.8');
+  assert.equal(manifest.version, '0.4.0');
   assert.equal(packageJson.version, manifest.version);
   assert.equal(manifest.default_locale, 'en');
   assert.equal(manifest.name, '__MSG_extName__');
@@ -228,15 +229,15 @@ test('HTML pages use local assets and keep required extension mount points', () 
   const pages = [
     {
       file: 'popup.html',
-      ids: ['content', 'refreshBtn', 'status', 'focusStrip', 'cards', 'dashboardBtn', 'topPercent']
+      ids: ['content', 'refreshBtn', 'status', 'focusStrip', 'cards', 'settingsBtn', 'dashboardBtn', 'topPercent']
     },
     {
       file: 'dashboard.html',
-      ids: ['refreshDashboard', 'dashboardSummary', 'dashboard-content', 'cardViewBtn', 'listViewBtn', 'dashboardRefreshStatus', 'dashboardRefreshTitle', 'dashboardRefreshDetail', 'dashboardRefreshProgress', 'chartModal', 'chartModalCanvas', 'chartModalClose']
+      ids: ['dashboardTitle', 'dashboardSubtitle', 'dashboardAccountContext', 'refreshDashboard', 'dashboardSummary', 'dashboard-content', 'cardViewBtn', 'listViewBtn', 'dashboardRefreshStatus', 'dashboardRefreshTitle', 'dashboardRefreshDetail', 'dashboardRefreshProgress', 'chartModal', 'chartModalCanvas', 'chartModalClose']
     },
     {
       file: 'options.html',
-      ids: ['apiToken', 'accountId', 'saveBtn', 'testApiBtn', 'apiTestPanel', 'apiTestPanelState', 'apiTestSummary', 'apiCapabilityGrid', 'msg']
+      ids: ['profileSelect', 'profileLabel', 'accountProfileList', 'newProfileBtn', 'deleteProfileBtn', 'apiToken', 'accountId', 'saveBtn', 'testApiBtn', 'apiTestPanel', 'apiTestPanelState', 'apiTestSummary', 'apiCapabilityGrid', 'msg']
     },
     {
       file: 'webdav.html',
@@ -252,7 +253,7 @@ test('HTML pages use local assets and keep required extension mount points', () 
     },
     {
       file: 'about.html',
-      ids: ['about-settings', 'language-settings', 'localePreference', 'aboutVersion']
+      ids: ['about-settings', 'aboutVersion']
     },
     {
       file: 'privacy.html',
@@ -297,29 +298,38 @@ test('HTML pages use local assets and keep required extension mount points', () 
       assert.match(html, /href=["']release-notes\.html["']/, `${page.file} should link to Release Notes`);
       assert.match(html, /href=["']https:\/\/cloudflare-quota-monitor\.thesignalwise\.com\/["']/, `${page.file} should link to the official website`);
       assert.match(html, /href=["']https:\/\/github\.com\/thesignalwise\/cloudflare-quota-monitor["']/, `${page.file} should link to GitHub`);
+      assert.match(html, /class=["'][^"']*\bnav-locale\b[^"']*["'][^>]*id=["']language-settings["']/, `${page.file} should move language settings into the sidebar footer`);
+      assert.match(html, /id=["']localeMenuBtn["'][^>]*aria-haspopup=["']menu["'][^>]*aria-expanded=["']false["']/, `${page.file} should use a compact language menu button`);
+      const localeMenuButton = html.match(/<button\s+id=["']localeMenuBtn["'][\s\S]*?<\/button>/)?.[0] || '';
+      assert.match(localeMenuButton, /locale-trigger-code/, `${page.file} should show a language abbreviation button`);
+      assert.doesNotMatch(localeMenuButton, /<svg\b/, `${page.file} should not use a globe icon for the language button`);
+      assert.equal([...html.matchAll(/data-locale-option=/g)].length, 6, `${page.file} should include all locale options in the menu`);
+      assert.match(html, /class=["'][^"']*\bnav-footer-link--site\b/, `${page.file} should style the website footer link separately`);
+      const siteFooterLink = html.match(/<a\s+class=["'][^"']*\bnav-footer-link--site\b[\s\S]*?<\/a>/)?.[0] || '';
+      assert.match(siteFooterLink, /nav-footer-icon--home/, `${page.file} should use an icon-font home website icon`);
+      assert.doesNotMatch(siteFooterLink, /<svg\b/, `${page.file} should not use SVG for the website icon`);
+      assert.match(html, /class=["'][^"']*\bnav-footer-link--github\b/, `${page.file} should style the GitHub footer link separately`);
     }
   });
 
   assert.doesNotMatch(readText('dashboard.html'), /top-nav__link/, 'dashboard should not use the standalone top navigation');
 
-  const aboutHtml = readText('about.html');
+  const dashboardHtml = readText('dashboard.html');
   [
-    ['zh-CN', '简体中文'],
-    ['zh-TW', '繁體中文'],
-    ['en', 'English'],
-    ['ja', '日本語'],
-    ['ko', '한국어']
-  ].forEach(([value, label]) => {
+    ['auto', '🌐', 'Follow browser'],
+    ['zh-CN', '🇨🇳', '简体中文'],
+    ['zh-TW', '🇭🇰', '繁體中文'],
+    ['en', '🇺🇸', 'English'],
+    ['ja', '🇯🇵', '日本語'],
+    ['ko', '🇰🇷', '한국어']
+  ].forEach(([value, flag, label]) => {
     assert.match(
-      aboutHtml,
-      new RegExp(`<option value=["']${value}["'][^>]*data-i18n-static[^>]*>${label}</option>`),
-      `language selector should include stable native label ${label}`
+      dashboardHtml,
+      new RegExp(`data-locale-option=["']${value}["'][^>]*>${flag} <span>${label}</span></button>`),
+      `language menu should include ${flag} ${label}`
     );
   });
-  assert.doesNotMatch(aboutHtml, />Simplified Chinese</);
-  assert.doesNotMatch(aboutHtml, />Traditional Chinese</);
-  assert.doesNotMatch(aboutHtml, />Japanese</);
-  assert.doesNotMatch(aboutHtml, />Korean</);
+  assert.doesNotMatch(readText('about.html'), /id=["']language-settings["'][\s\S]*<h3>Language<\/h3>/, 'about page should not keep a separate language settings card');
 });
 
 test('JavaScript files pass syntax checks', () => {
@@ -364,6 +374,57 @@ test('runtime i18n dictionaries cover localizable HTML text', () => {
   });
 });
 
+test('runtime i18n dictionaries cover multi-account dynamic labels', () => {
+  const dictionaries = extractRuntimeDictionaries();
+  const dynamicLabels = [
+    'Critical',
+    'Watch',
+    'Error',
+    'Healthy',
+    'Cloudflare account',
+    'New account',
+    'Default account',
+    'No account data',
+    'No usage data',
+    'No sync',
+    'Just now',
+    'Critical accounts',
+    'Watch accounts',
+    'Sync errors',
+    'Monitored accounts',
+    'Needs attention',
+    'Account health',
+    'View details',
+    'Open account details',
+    'Account overview',
+    'Account details',
+    'Service-level quota details',
+    'Viewing account',
+    'Back to overview',
+    'Setup needed',
+    'Compute & Runtime',
+    'Storage & Databases',
+    'Messaging & Data Plane',
+    'Analytics & Logs',
+    'tracked metrics',
+    'Used',
+    'Not available',
+    'API metric',
+    'Monthly',
+    'Total'
+  ];
+
+  ['zh-CN', 'zh-TW', 'ja', 'ko'].forEach(locale => {
+    const missing = dynamicLabels.filter(label => !Object.hasOwn(dictionaries[locale], label));
+    assert.deepEqual(missing, [], `${locale} should translate multi-account dynamic labels`);
+  });
+
+  assert.match(readText('popup.js'), /Intl\.RelativeTimeFormat/, 'popup should localize relative sync times');
+  assert.match(readText('dashboard.js'), /Intl\.RelativeTimeFormat/, 'dashboard should localize relative sync times');
+  assert.match(readText('popup.js'), /quota-i18n-ready/, 'popup should re-render after runtime i18n is ready');
+  assert.match(readText('dashboard.js'), /quota-i18n-ready/, 'dashboard should re-render after runtime i18n is ready');
+});
+
 test('background worker defines the expected quota and message surface', () => {
   const source = readText('background.js');
   const quotaKeys = [
@@ -395,7 +456,11 @@ test('background worker defines the expected quota and message surface', () => {
 
   quotaKeys.forEach(key => assert.match(source, new RegExp(`${key}:\\s*\\{`), `missing quota key ${key}`));
   assert.match(source, /message\.action === 'getQuotas'/);
+  assert.match(source, /message\.action === 'getAccountOverview'/);
   assert.match(source, /message\.action === 'refreshQuotas'/);
+  assert.match(source, /quotaCacheByProfile/);
+  assert.match(source, /historyByProfile/);
+  assert.match(source, /migrateLegacyMonitoringData/);
   assert.match(source, /chrome\.alarms\.create\('updateQuotas'/);
   assert.match(source, /chrome\.runtime\.onStartup\.addListener/);
   assert.match(source, /function ensureUpdateAlarm/);
@@ -407,13 +472,98 @@ test('background worker defines the expected quota and message surface', () => {
   assert.match(source, /lastUpdated: now/, 'latest refresh timestamp should be cached with quota data');
 });
 
+test('background settings migration preserves legacy single-account cache data', async () => {
+  const source = readText('background.js');
+  const storageState = {
+    settings: {
+      apiToken: 'legacy-token',
+      accountId: 'legacy-account'
+    },
+    quotas: {
+      workers: { used: 123, limit: 100000, percent: 0.00123 }
+    },
+    history: [
+      { timestamp: 1710000000000, quotas: { workers: { used: 100 } } }
+    ],
+    lastUpdated: 1710000000000
+  };
+  const context = {
+    console,
+    Date,
+    Promise,
+    Number,
+    String,
+    Boolean,
+    Array,
+    Object,
+    Math,
+    JSON,
+    setTimeout,
+    clearTimeout,
+    fetch: async () => ({ json: async () => ({}), ok: true }),
+    chrome: {
+      storage: {
+        local: {
+          get(keys, callback) {
+            if (Array.isArray(keys)) {
+              callback(keys.reduce((result, key) => Object.assign(result, { [key]: storageState[key] }), {}));
+              return;
+            }
+            if (keys && typeof keys === 'object') {
+              callback(Object.keys(keys).reduce((result, key) => {
+                result[key] = Object.prototype.hasOwnProperty.call(storageState, key) ? storageState[key] : keys[key];
+                return result;
+              }, {}));
+              return;
+            }
+            callback({});
+          },
+          set(values, callback = () => {}) {
+            Object.assign(storageState, values);
+            callback();
+          }
+        }
+      },
+      alarms: {
+        create() {},
+        onAlarm: { addListener() {} }
+      },
+      runtime: {
+        onInstalled: { addListener() {} },
+        onStartup: { addListener() {} },
+        onMessage: { addListener() {} }
+      }
+    }
+  };
+
+  vm.runInNewContext(source, context, { filename: 'background.js' });
+  const settings = await context.loadSettings();
+  const [profile] = settings.profiles;
+
+  assert.equal(settings.schemaVersion, 3);
+  assert.equal(profile.apiToken, 'legacy-token');
+  assert.equal(profile.accountId, 'legacy-account');
+  assert.equal(storageState.settings.schemaVersion, 3);
+  assert.deepEqual(storageState.quotaCacheByProfile[profile.id].quotas, storageState.quotas);
+  assert.deepEqual(storageState.historyByProfile[profile.id], storageState.history);
+  assert.equal(storageState.quotaCacheByProfile[profile.id].lastUpdated, 1710000000000);
+});
+
 test('options page exposes API validation and capability checks', () => {
   const html = readText('options.html');
   const source = readText('options.js');
+  const popupSource = readText('popup.js');
 
   assert.match(html, /id=["']testApiBtn["']/, 'API page should include a test button');
+  assert.match(html, /id=["']profileSelect["']/, 'API page should expose account profile selection');
+  assert.match(html, /id=["']newProfileBtn["']/, 'API page should allow adding account profiles');
+  assert.match(html, /id=["']deleteProfileBtn["']/, 'API page should allow deleting account profiles');
+  assert.match(source, /function normalizeSettings/, 'options should normalize legacy single-account settings into profiles');
+  assert.match(source, /activeProfileId/, 'options should persist the active account profile');
   assert.match(html, /<details id=["']apiTestPanel["'] class=["']api-test-panel["']>/, 'API test results should be collapsed by default');
   assert.match(source, /apiTestPanelEl\.open = true/, 'API test results should expand after running a test');
+  assert.match(popupSource, /chrome\.tabs\.create\(\{\s*url:\s*chrome\.runtime\.getURL\('options\.html'\)\s*\}\)/, 'popup API settings should open the full options page in a tab');
+  assert.doesNotMatch(popupSource, /openOptionsPage/, 'popup API settings should not use the modal options surface');
   assert.match(source, /verifyToken/);
   assert.match(source, /verifyAccountAccess/);
   [
@@ -433,10 +583,20 @@ test('privacy and release packaging surfaces are present', () => {
   const privacyMd = readText('PRIVACY.md');
   const packageScript = readText('scripts/package-extension.mjs');
 
-  assert.equal(manifest.version, '0.3.8');
+  assert.equal(manifest.version, '0.4.0');
   assert.equal(packageJson.scripts.package, 'node scripts/package-extension.mjs');
   assert.match(privacyHtml, /Limited Use disclosure/);
   assert.match(privacyMd, /Chrome Web Store User Data Policy/);
+  assert.match(readText('release-notes.html'), /<h3>v0\.4\.0<\/h3>/);
+  assert.match(readText('release-notes.html'), /Released 2026-06-23/);
+  assert.match(readText('release-notes.html'), /Multi-account monitoring/);
+  assert.match(readText('release-notes.html'), /Account-level overview/);
+  assert.match(readText('release-notes.html'), /Profile drilldown/);
+  assert.match(readText('release-notes.html'), /<h3>v0\.3\.9<\/h3>/);
+  assert.match(readText('release-notes.html'), /Released 2026-06-10/);
+  assert.match(readText('release-notes.html'), /Cloudflare-aligned UI polish/);
+  assert.match(readText('release-notes.html'), /Popup workflow cleanup/);
+  assert.match(readText('release-notes.html'), /Sidebar language control/);
   assert.match(readText('release-notes.html'), /<h3>v0\.3\.8<\/h3>/);
   assert.match(readText('release-notes.html'), /Internationalization audit/);
   assert.match(readText('release-notes.html'), /Translation coverage guard/);
@@ -462,7 +622,11 @@ test('configuration import/export stays local and avoids broad host permissions'
   assert.match(source, /exportConfig/);
   assert.match(source, /importConfig/);
   assert.match(source, /downloadJson/);
-  assert.match(source, /schemaVersion:\s*2/);
+  assert.match(source, /schemaVersion:\s*3/);
+  assert.match(source, /profiles/);
+  assert.match(source, /activeProfileId/);
+  assert.match(source, /quotaCacheByProfile/);
+  assert.match(source, /historyByProfile/);
   assert.match(source, /monitoringData/);
   assert.match(source, /quotas/);
   assert.match(source, /history/);
@@ -516,6 +680,18 @@ test('dashboard charts can be expanded and use adaptive trend scaling', () => {
   assert.match(source, /data-chart-key/, 'metric cards should expose clickable chart targets');
   assert.match(css, /\.chart-modal/);
   assert.match(css, /cursor:\s*zoom-in/);
+});
+
+test('dashboard supports account overview drilldown and switching', () => {
+  const html = readText('dashboard.html');
+  const source = readText('dashboard.js');
+  const css = readText('style.css');
+
+  assert.match(html, /id=["']dashboardAccountContext["']/, 'dashboard should include an account context region');
+  assert.match(source, /dashboardAccountSelect/, 'account detail view should render a profile switcher');
+  assert.match(source, /dashboard\.html\?profile=/, 'account rows should drill into profile-specific detail URLs');
+  assert.match(source, /getAccountOverview/, 'detail view should load account overview data for switching');
+  assert.match(css, /\.dashboard-account-context/, 'account switcher should have dashboard styling');
 });
 
 test('sync schedule exposes background job logs', () => {

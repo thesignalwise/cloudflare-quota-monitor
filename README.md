@@ -1,6 +1,6 @@
 # Cloudflare Free Quota Monitor
 
-Chrome MV3 extension for monitoring Cloudflare free-tier usage from a compact popup and a unified settings workspace for dashboard, credentials, local config import/export, privacy, service coverage, schedule, and About information.
+Chrome MV3 extension for monitoring Cloudflare free-tier usage across one or more Cloudflare accounts from a compact popup and a unified settings workspace for dashboard, credentials, local config import/export, privacy, service coverage, schedule, and About information.
 
 The UI follows the Google Stitch "Professional Modern Light" direction included in `google-stitch/`: white and light gray surfaces, Cloudflare orange accents, compact cards, and dense operational data.
 
@@ -63,7 +63,7 @@ Create a Cloudflare API token with read-only access for the products you want to
 - User Details: Read
 - Memberships: Read
 
-The token and account ID are stored in `chrome.storage.local` by the extension. Local config export is optional and downloads a JSON file that includes sensitive settings plus cached quota and history data. Local integration tests read credentials from `.env`.
+Account profiles, API tokens, and account IDs are stored in `chrome.storage.local` by the extension. Local config export is optional and downloads a JSON file that includes sensitive settings plus cached quota and history data for configured accounts. Local integration tests read credentials from `.env`.
 
 ## Privacy And Permissions
 
@@ -103,10 +103,10 @@ CLOUDFLARE_ACCOUNT_ID=replace_with_your_account_id
 
 ## Interface
 
-- Popup: dense mini-card cockpit sorted by usage pressure. It highlights the highest percentage first, then shows critical/watch/tracked counters and compact metric cards.
-- Dashboard: now lives inside the same sidebar workspace as the other settings pages. It is grouped by Compute & Runtime, Storage & Databases, Messaging & Data Plane, and Analytics & Logs. Use the Cards/List toggle to switch between visual cards and a scan-friendly list.
+- Popup: multi-account quota overview sorted by usage pressure. It highlights the highest-risk account first, then shows critical/watch/tracked counters and compact account cards.
+- Dashboard: defaults to an account-level overview across every enabled Cloudflare profile, with critical and watch accounts surfaced first. Account rows drill into service-level quota details grouped by Compute & Runtime, Storage & Databases, Messaging & Data Plane, and Analytics & Logs. Use the Cards/List toggle to switch between visual cards and a scan-friendly list.
 - Settings pages: sidebar navigation starts with the primary dashboard, then configuration and monitoring controls, followed by support pages: `dashboard.html`, `options.html`, `services.html`, `schedule.html`, `webdav.html`, `release-notes.html`, `privacy.html`, and `about.html`. Sidebar footer uses icon-only links for the official website and GitHub repository.
-- Internationalization: UI defaults to the browser language and supports Simplified Chinese, Traditional Chinese, English, Japanese, and Korean. A manual language selector is available on the About page.
+- Internationalization: UI defaults to the browser language and supports Simplified Chinese, Traditional Chinese, English, Japanese, and Korean. A manual language selector is available in the sidebar footer.
 
 ## Install In Chrome
 
@@ -120,7 +120,7 @@ For local development, load the unpacked extension:
 2. Enable Developer mode.
 3. Click Load unpacked.
 4. Select this repository directory.
-5. Open the extension Options page and enter the API token and account ID.
+5. Open the extension Options page and add one or more account profiles with an API token and account ID.
 6. Save, then use Refresh in the popup or dashboard.
 
 ## Development

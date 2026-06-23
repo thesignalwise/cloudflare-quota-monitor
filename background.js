@@ -13,8 +13,11 @@
  */
 
 const DEFAULT_SETTINGS = {
+  schemaVersion: 3,
   apiToken: '',
   accountId: '',
+  activeProfileId: '',
+  profiles: [],
   webdav: {
     url: '',
     username: '',
@@ -69,6 +72,7 @@ const QUOTAS = {
 
 // Cached quotas to serve popup requests quickly.
 let cachedQuotas = null;
+let cachedQuotaCacheByProfile = null;
 
 /**
  * Helper to read extension settings from chrome.storage. Returns a promise.
@@ -76,9 +80,137 @@ let cachedQuotas = null;
 function loadSettings() {
   return new Promise(resolve => {
     chrome.storage.local.get(['settings'], result => {
-      resolve(Object.assign({}, DEFAULT_SETTINGS, result.settings || {}));
+      const settings = normalizeSettings(result.settings || {});
+      if (settings.needsMigration) {
+        const persisted = Object.assign({}, settings);
+        delete persisted.needsMigration;
+        migrateLegacyMonitoringData(persisted, () => {
+          chrome.storage.local.set({ settings: persisted }, () => resolve(persisted));
+        });
+        return;
+      }
+      delete settings.needsMigration;
+      resolve(settings);
     });
   });
+}
+
+function migrateLegacyMonitoringData(settings, done) {
+  const profile = settings.profiles?.[0];
+  if (!profile) {
+    done();
+    return;
+  }
+
+  chrome.storage.local.get({
+    quotas: null,
+    history: [],
+    lastUpdated: null,
+    quotaCacheByProfile: {},
+    historyByProfile: {}
+  }, result => {
+    const quotaCacheByProfile = result.quotaCacheByProfile && typeof result.quotaCacheByProfile === 'object'
+      ? result.quotaCacheByProfile
+      : {};
+    const historyByProfile = result.historyByProfile && typeof result.historyByProfile === 'object'
+      ? result.historyByProfile
+      : {};
+
+    if (result.quotas && !quotaCacheByProfile[profile.id]) {
+      quotaCacheByProfile[profile.id] = {
+        profileId: profile.id,
+        quotas: result.quotas,
+        lastUpdated: Number.isFinite(Number(result.lastUpdated)) ? Number(result.lastUpdated) : null,
+        lastError: null
+      };
+    }
+
+    if (Array.isArray(result.history) && result.history.length && !historyByProfile[profile.id]) {
+      historyByProfile[profile.id] = result.history;
+    }
+
+    chrome.storage.local.set({ quotaCacheByProfile, historyByProfile }, done);
+  });
+}
+
+function profileIdFor(accountId, index = 0) {
+  const normalized = String(accountId || 'account')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 28) || 'account';
+  return `profile-${normalized}${index ? `-${index}` : ''}`;
+}
+
+function sanitizeProfile(profile, index = 0) {
+  const accountId = typeof profile?.accountId === 'string' ? profile.accountId.trim() : '';
+  const apiToken = typeof profile?.apiToken === 'string' ? profile.apiToken.trim() : '';
+  const id = typeof profile?.id === 'string' && profile.id.trim()
+    ? profile.id.trim()
+    : profileIdFor(accountId, index);
+  const label = typeof profile?.label === 'string' && profile.label.trim()
+    ? profile.label.trim()
+    : `Cloudflare ${accountId ? accountId.slice(-6) : index + 1}`;
+
+  return {
+    id,
+    label,
+    apiToken,
+    accountId,
+    enabled: profile?.enabled !== false,
+    createdAt: Number.isFinite(Number(profile?.createdAt)) ? Number(profile.createdAt) : Date.now(),
+    updatedAt: Number.isFinite(Number(profile?.updatedAt)) ? Number(profile.updatedAt) : Date.now()
+  };
+}
+
+function normalizeSettings(rawSettings = {}) {
+  const rawProfiles = Array.isArray(rawSettings.profiles) ? rawSettings.profiles : [];
+  const seen = new Set();
+  const profiles = rawProfiles
+    .map((profile, index) => sanitizeProfile(profile, index))
+    .filter(profile => profile.apiToken || profile.accountId || profile.label)
+    .map((profile, index) => {
+      let id = profile.id;
+      while (seen.has(id)) {
+        id = `${profile.id}-${index + 1}`;
+      }
+      seen.add(id);
+      return Object.assign({}, profile, { id });
+    });
+  let needsMigration = false;
+
+  if (!profiles.length && (rawSettings.apiToken || rawSettings.accountId)) {
+    profiles.push(sanitizeProfile({
+      id: profileIdFor(rawSettings.accountId),
+      label: 'Default account',
+      apiToken: rawSettings.apiToken || '',
+      accountId: rawSettings.accountId || '',
+      enabled: true
+    }));
+    needsMigration = true;
+  }
+
+  let activeProfileId = typeof rawSettings.activeProfileId === 'string' ? rawSettings.activeProfileId : '';
+  if (!profiles.some(profile => profile.id === activeProfileId)) {
+    activeProfileId = profiles[0]?.id || '';
+    if (profiles.length) needsMigration = true;
+  }
+
+  const activeProfile = profiles.find(profile => profile.id === activeProfileId) || profiles[0] || {};
+  const settings = Object.assign({}, DEFAULT_SETTINGS, rawSettings, {
+    schemaVersion: 3,
+    profiles,
+    activeProfileId,
+    apiToken: activeProfile.apiToken || rawSettings.apiToken || '',
+    accountId: activeProfile.accountId || rawSettings.accountId || '',
+    webdav: Object.assign({}, DEFAULT_SETTINGS.webdav, rawSettings.webdav || {})
+  });
+  if (needsMigration || rawSettings.schemaVersion !== 3) settings.needsMigration = true;
+  return settings;
+}
+
+function getEnabledProfiles(settings) {
+  return (settings.profiles || []).filter(profile => profile.enabled !== false && profile.apiToken && profile.accountId);
 }
 
 function historyDayKey(timestamp) {
@@ -106,12 +238,40 @@ function upsertHistorySnapshot(quotas, timestamp = Date.now()) {
   });
 }
 
+function upsertProfileHistorySnapshot(profileId, quotas, timestamp = Date.now()) {
+  return new Promise(resolve => {
+    chrome.storage.local.get({ historyByProfile: {} }, res => {
+      const historyByProfile = res.historyByProfile && typeof res.historyByProfile === 'object'
+        ? res.historyByProfile
+        : {};
+      const history = Array.isArray(historyByProfile[profileId])
+        ? historyByProfile[profileId].filter(entry => entry && entry.quotas)
+        : [];
+      const todayKey = historyDayKey(timestamp);
+      const nextHistory = history
+        .filter(entry => historyDayKey(entry.timestamp) !== todayKey)
+        .concat({ timestamp, quotas })
+        .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
+
+      while (nextHistory.length > HISTORY_LIMIT) {
+        nextHistory.shift();
+      }
+
+      chrome.storage.local.set({
+        historyByProfile: Object.assign({}, historyByProfile, { [profileId]: nextHistory })
+      }, resolve);
+    });
+  });
+}
+
 function recordSyncLog(source, status, message, details = {}) {
   const entry = {
     timestamp: Date.now(),
     source: source || 'manual',
     status,
     message,
+    profileId: details.profileId,
+    profileLabel: details.profileLabel,
     durationMs: Number.isFinite(Number(details.durationMs)) ? Number(details.durationMs) : undefined
   };
 
@@ -759,6 +919,172 @@ async function fetchPagesUsage(token, accountId) {
   }
 }
 
+async function fetchQuotaSnapshot(token, accountId) {
+  const [workersUsed, pagesUsed, kvUsage, d1Usage, r2Usage, queuesUsed, hyperdriveUsed, browserUsed, logsUsage, analyticsUsage, workflowsUsed, aiUsed, durableObjectsUsage] = await Promise.all([
+    fetchWorkersUsage(token, accountId),
+    fetchPagesUsage(token, accountId),
+    fetchKvUsage(token, accountId),
+    fetchD1Usage(token, accountId),
+    fetchR2Usage(token, accountId),
+    fetchQueuesUsage(token, accountId),
+    fetchHyperdriveUsage(token, accountId),
+    fetchBrowserUsage(token, accountId),
+    fetchLogsUsage(token, accountId),
+    fetchAnalyticsUsage(token, accountId),
+    fetchWorkflowsUsage(token, accountId),
+    fetchAiUsage(token, accountId),
+    fetchDurableObjectsUsage(token, accountId)
+  ]);
+
+  return {
+    workers: {
+      used: workersUsed,
+      limit: QUOTAS.workers.limit,
+      percent: percentOf(workersUsed, QUOTAS.workers.limit),
+      unit: QUOTAS.workers.unit,
+      period: QUOTAS.workers.period
+    },
+    pages: {
+      used: pagesUsed,
+      limit: QUOTAS.pages.limit,
+      percent: percentOf(pagesUsed, QUOTAS.pages.limit),
+      unit: QUOTAS.pages.unit,
+      period: QUOTAS.pages.period
+    },
+    kv: {
+      reads: kvUsage.reads,
+      writes: kvUsage.writes,
+      deletes: kvUsage.deletes,
+      lists: kvUsage.lists,
+      readsPercent: percentOf(kvUsage.reads, QUOTAS.kvReads.limit),
+      writesPercent: percentOf(kvUsage.writes, QUOTAS.kvWrites.limit),
+      deletesPercent: percentOf(kvUsage.deletes, QUOTAS.kvDeletes.limit),
+      listsPercent: percentOf(kvUsage.lists, QUOTAS.kvLists.limit),
+      readsLimit: QUOTAS.kvReads.limit,
+      writesLimit: QUOTAS.kvWrites.limit,
+      deletesLimit: QUOTAS.kvDeletes.limit,
+      listsLimit: QUOTAS.kvLists.limit,
+      unit: 'operations',
+      period: QUOTAS.kvReads.period
+    },
+    d1: {
+      reads: d1Usage.reads,
+      writes: d1Usage.writes,
+      readsPercent: percentOf(d1Usage.reads, QUOTAS.d1Reads.limit),
+      writesPercent: percentOf(d1Usage.writes, QUOTAS.d1Writes.limit),
+      readsLimit: QUOTAS.d1Reads.limit,
+      writesLimit: QUOTAS.d1Writes.limit,
+      unit: 'rows',
+      period: QUOTAS.d1Reads.period
+    },
+    r2: {
+      storage: r2Usage.storage,
+      classA: r2Usage.classA,
+      classB: r2Usage.classB,
+      storagePercent: percentOf(r2Usage.storage, QUOTAS.r2Storage.limit),
+      classAPercent: percentOf(r2Usage.classA, QUOTAS.r2AOps.limit),
+      classBPercent: percentOf(r2Usage.classB, QUOTAS.r2BOps.limit),
+      storageLimit: QUOTAS.r2Storage.limit,
+      classALimit: QUOTAS.r2AOps.limit,
+      classBLimit: QUOTAS.r2BOps.limit,
+      unit: {
+        storage: 'bytes',
+        opsA: 'operations',
+        opsB: 'operations'
+      },
+      period: {
+        storage: QUOTAS.r2Storage.period,
+        ops: QUOTAS.r2AOps.period
+      }
+    },
+    queues: {
+      used: queuesUsed,
+      limit: QUOTAS.queues.limit,
+      percent: percentOf(queuesUsed, QUOTAS.queues.limit),
+      unit: QUOTAS.queues.unit,
+      period: QUOTAS.queues.period
+    },
+    hyperdrive: {
+      used: hyperdriveUsed,
+      limit: QUOTAS.hyperdrive.limit,
+      percent: percentOf(hyperdriveUsed, QUOTAS.hyperdrive.limit),
+      unit: QUOTAS.hyperdrive.unit,
+      period: QUOTAS.hyperdrive.period
+    },
+    browser: {
+      used: browserUsed,
+      limit: QUOTAS.browser.limit,
+      percent: percentOf(browserUsed, QUOTAS.browser.limit),
+      unit: QUOTAS.browser.unit,
+      period: QUOTAS.browser.period
+    },
+    logs: {
+      used: logsUsage.events,
+      supported: logsUsage.supported,
+      billableBytes: logsUsage.billableBytes,
+      totalBytes: logsUsage.totalBytes,
+      limit: QUOTAS.logs.limit,
+      percent: percentOf(logsUsage.events, QUOTAS.logs.limit),
+      unit: QUOTAS.logs.unit,
+      period: QUOTAS.logs.period
+    },
+    analytics: {
+      writes: analyticsUsage.writes,
+      reads: analyticsUsage.reads,
+      readsSupported: analyticsUsage.readsSupported,
+      writesPercent: percentOf(analyticsUsage.writes, QUOTAS.analyticsWrites.limit),
+      readsPercent: percentOf(analyticsUsage.reads, QUOTAS.analyticsReads.limit),
+      writesLimit: QUOTAS.analyticsWrites.limit,
+      readsLimit: QUOTAS.analyticsReads.limit,
+      unit: { writes: 'points', reads: 'queries' },
+      period: { writes: QUOTAS.analyticsWrites.period, reads: QUOTAS.analyticsReads.period }
+    },
+    workflows: {
+      used: workflowsUsed,
+      limit: QUOTAS.workflows.limit,
+      percent: percentOf(workflowsUsed, QUOTAS.workflows.limit),
+      unit: QUOTAS.workflows.unit,
+      period: QUOTAS.workflows.period
+    },
+    ai: {
+      used: aiUsed,
+      limit: QUOTAS.ai.limit,
+      percent: percentOf(aiUsed, QUOTAS.ai.limit),
+      unit: QUOTAS.ai.unit,
+      period: QUOTAS.ai.period
+    },
+    durableObjects: {
+      requests: durableObjectsUsage.requests,
+      duration: durableObjectsUsage.duration,
+      rowsRead: durableObjectsUsage.rowsRead,
+      rowsWritten: durableObjectsUsage.rowsWritten,
+      sqlStorage: durableObjectsUsage.sqlStorage,
+      requestsPercent: percentOf(durableObjectsUsage.requests, QUOTAS.durableObjectsRequests.limit),
+      durationPercent: percentOf(durableObjectsUsage.duration, QUOTAS.durableObjectsDuration.limit),
+      rowsReadPercent: percentOf(durableObjectsUsage.rowsRead, QUOTAS.durableObjectsRowsRead.limit),
+      rowsWrittenPercent: percentOf(durableObjectsUsage.rowsWritten, QUOTAS.durableObjectsRowsWritten.limit),
+      sqlStoragePercent: percentOf(durableObjectsUsage.sqlStorage, QUOTAS.durableObjectsSqlStorage.limit),
+      requestsLimit: QUOTAS.durableObjectsRequests.limit,
+      durationLimit: QUOTAS.durableObjectsDuration.limit,
+      rowsReadLimit: QUOTAS.durableObjectsRowsRead.limit,
+      rowsWrittenLimit: QUOTAS.durableObjectsRowsWritten.limit,
+      sqlStorageLimit: QUOTAS.durableObjectsSqlStorage.limit,
+      unit: {
+        requests: 'requests',
+        duration: 'GB-s',
+        rows: 'rows',
+        storage: 'bytes'
+      },
+      period: {
+        requests: QUOTAS.durableObjectsRequests.period,
+        duration: QUOTAS.durableObjectsDuration.period,
+        rows: QUOTAS.durableObjectsRowsRead.period,
+        storage: QUOTAS.durableObjectsSqlStorage.period
+      }
+    }
+  };
+}
+
 /**
  * Update all quota metrics and cache them.
  * This function reads settings from storage and, if configured, fetches the
@@ -768,192 +1094,174 @@ async function fetchPagesUsage(token, accountId) {
  */
 async function updateQuotas(source = 'manual') {
   const startedAt = Date.now();
-  await recordSyncLog(source, 'started', 'Sync started.');
+  const refreshSource = typeof source === 'object' ? source.source || 'manual' : source;
+  await recordSyncLog(refreshSource, 'started', 'Sync started.');
   const settings = await loadSettings();
-  // Only attempt if both token and account ID are present
-  if (!settings.apiToken || !settings.accountId) {
+  const enabledProfiles = getEnabledProfiles(settings);
+  const requestedProfileId = typeof source === 'object' ? source.profileId : '';
+  const profiles = requestedProfileId
+    ? enabledProfiles.filter(profile => profile.id === requestedProfileId)
+    : enabledProfiles;
+
+  if (!profiles.length) {
     cachedQuotas = null;
     await chrome.storage.local.set({ quotas: null });
-    await recordSyncLog(source, 'skipped', 'Missing API token or account ID.', { durationMs: Date.now() - startedAt });
+    await recordSyncLog(refreshSource, 'skipped', 'Missing API token or account ID.', { durationMs: Date.now() - startedAt });
     return;
   }
-  const token = settings.apiToken.trim();
-  const accountId = settings.accountId.trim();
-  try {
-    const [workersUsed, pagesUsed, kvUsage, d1Usage, r2Usage, queuesUsed, hyperdriveUsed, browserUsed, logsUsage, analyticsUsage, workflowsUsed, aiUsed, durableObjectsUsage] = await Promise.all([
-      fetchWorkersUsage(token, accountId),
-      fetchPagesUsage(token, accountId),
-      fetchKvUsage(token, accountId),
-      fetchD1Usage(token, accountId),
-      fetchR2Usage(token, accountId),
-      fetchQueuesUsage(token, accountId),
-      fetchHyperdriveUsage(token, accountId),
-      fetchBrowserUsage(token, accountId),
-      fetchLogsUsage(token, accountId),
-      fetchAnalyticsUsage(token, accountId),
-      fetchWorkflowsUsage(token, accountId),
-      fetchAiUsage(token, accountId),
-      fetchDurableObjectsUsage(token, accountId)
-    ]);
-    const result = {
-      workers: {
-        used: workersUsed,
-        limit: QUOTAS.workers.limit,
-        percent: percentOf(workersUsed, QUOTAS.workers.limit),
-        unit: QUOTAS.workers.unit,
-        period: QUOTAS.workers.period
-      },
-      pages: {
-        used: pagesUsed,
-        limit: QUOTAS.pages.limit,
-        percent: percentOf(pagesUsed, QUOTAS.pages.limit),
-        unit: QUOTAS.pages.unit,
-        period: QUOTAS.pages.period
-      },
-      kv: {
-        reads: kvUsage.reads,
-        writes: kvUsage.writes,
-        deletes: kvUsage.deletes,
-        lists: kvUsage.lists,
-        readsPercent: percentOf(kvUsage.reads, QUOTAS.kvReads.limit),
-        writesPercent: percentOf(kvUsage.writes, QUOTAS.kvWrites.limit),
-        deletesPercent: percentOf(kvUsage.deletes, QUOTAS.kvDeletes.limit),
-        listsPercent: percentOf(kvUsage.lists, QUOTAS.kvLists.limit),
-        readsLimit: QUOTAS.kvReads.limit,
-        writesLimit: QUOTAS.kvWrites.limit,
-        deletesLimit: QUOTAS.kvDeletes.limit,
-        listsLimit: QUOTAS.kvLists.limit,
-        unit: 'operations',
-        period: QUOTAS.kvReads.period
-      },
-      d1: {
-        reads: d1Usage.reads,
-        writes: d1Usage.writes,
-        readsPercent: percentOf(d1Usage.reads, QUOTAS.d1Reads.limit),
-        writesPercent: percentOf(d1Usage.writes, QUOTAS.d1Writes.limit),
-        readsLimit: QUOTAS.d1Reads.limit,
-        writesLimit: QUOTAS.d1Writes.limit,
-        unit: 'rows',
-        period: QUOTAS.d1Reads.period
-      },
-      r2: {
-        storage: r2Usage.storage,
-        classA: r2Usage.classA,
-        classB: r2Usage.classB,
-        storagePercent: percentOf(r2Usage.storage, QUOTAS.r2Storage.limit),
-        classAPercent: percentOf(r2Usage.classA, QUOTAS.r2AOps.limit),
-        classBPercent: percentOf(r2Usage.classB, QUOTAS.r2BOps.limit),
-        storageLimit: QUOTAS.r2Storage.limit,
-        classALimit: QUOTAS.r2AOps.limit,
-        classBLimit: QUOTAS.r2BOps.limit,
-        unit: {
-          storage: 'bytes',
-          opsA: 'operations',
-          opsB: 'operations'
-        },
-        period: {
-          storage: QUOTAS.r2Storage.period,
-          ops: QUOTAS.r2AOps.period
-        }
-      },
-      queues: {
-        used: queuesUsed,
-        limit: QUOTAS.queues.limit,
-        percent: percentOf(queuesUsed, QUOTAS.queues.limit),
-        unit: QUOTAS.queues.unit,
-        period: QUOTAS.queues.period
-      },
-      hyperdrive: {
-        used: hyperdriveUsed,
-        limit: QUOTAS.hyperdrive.limit,
-        percent: percentOf(hyperdriveUsed, QUOTAS.hyperdrive.limit),
-        unit: QUOTAS.hyperdrive.unit,
-        period: QUOTAS.hyperdrive.period
-      },
-      browser: {
-        used: browserUsed,
-        limit: QUOTAS.browser.limit,
-        percent: percentOf(browserUsed, QUOTAS.browser.limit),
-        unit: QUOTAS.browser.unit,
-        period: QUOTAS.browser.period
-      },
-      logs: {
-        used: logsUsage.events,
-        supported: logsUsage.supported,
-        billableBytes: logsUsage.billableBytes,
-        totalBytes: logsUsage.totalBytes,
-        limit: QUOTAS.logs.limit,
-        percent: percentOf(logsUsage.events, QUOTAS.logs.limit),
-        unit: QUOTAS.logs.unit,
-        period: QUOTAS.logs.period
-      },
-      analytics: {
-        writes: analyticsUsage.writes,
-        reads: analyticsUsage.reads,
-        readsSupported: analyticsUsage.readsSupported,
-        writesPercent: percentOf(analyticsUsage.writes, QUOTAS.analyticsWrites.limit),
-        readsPercent: percentOf(analyticsUsage.reads, QUOTAS.analyticsReads.limit),
-        writesLimit: QUOTAS.analyticsWrites.limit,
-        readsLimit: QUOTAS.analyticsReads.limit,
-        unit: { writes: 'points', reads: 'queries' },
-        period: { writes: QUOTAS.analyticsWrites.period, reads: QUOTAS.analyticsReads.period }
-      },
-      workflows: {
-        used: workflowsUsed,
-        limit: QUOTAS.workflows.limit,
-        percent: percentOf(workflowsUsed, QUOTAS.workflows.limit),
-        unit: QUOTAS.workflows.unit,
-        period: QUOTAS.workflows.period
-      },
-      ai: {
-        used: aiUsed,
-        limit: QUOTAS.ai.limit,
-        percent: percentOf(aiUsed, QUOTAS.ai.limit),
-        unit: QUOTAS.ai.unit,
-        period: QUOTAS.ai.period
-      },
-      durableObjects: {
-        requests: durableObjectsUsage.requests,
-        duration: durableObjectsUsage.duration,
-        rowsRead: durableObjectsUsage.rowsRead,
-        rowsWritten: durableObjectsUsage.rowsWritten,
-        sqlStorage: durableObjectsUsage.sqlStorage,
-        requestsPercent: percentOf(durableObjectsUsage.requests, QUOTAS.durableObjectsRequests.limit),
-        durationPercent: percentOf(durableObjectsUsage.duration, QUOTAS.durableObjectsDuration.limit),
-        rowsReadPercent: percentOf(durableObjectsUsage.rowsRead, QUOTAS.durableObjectsRowsRead.limit),
-        rowsWrittenPercent: percentOf(durableObjectsUsage.rowsWritten, QUOTAS.durableObjectsRowsWritten.limit),
-        sqlStoragePercent: percentOf(durableObjectsUsage.sqlStorage, QUOTAS.durableObjectsSqlStorage.limit),
-        requestsLimit: QUOTAS.durableObjectsRequests.limit,
-        durationLimit: QUOTAS.durableObjectsDuration.limit,
-        rowsReadLimit: QUOTAS.durableObjectsRowsRead.limit,
-        rowsWrittenLimit: QUOTAS.durableObjectsRowsWritten.limit,
-        sqlStorageLimit: QUOTAS.durableObjectsSqlStorage.limit,
-        unit: {
-          requests: 'requests',
-          duration: 'GB-s',
-          rows: 'rows',
-          storage: 'bytes'
-        },
-        period: {
-          requests: QUOTAS.durableObjectsRequests.period,
-          duration: QUOTAS.durableObjectsDuration.period,
-          rows: QUOTAS.durableObjectsRowsRead.period,
-          storage: QUOTAS.durableObjectsSqlStorage.period
-        }
+
+  const storageState = await new Promise(resolve => {
+    chrome.storage.local.get({ quotaCacheByProfile: {} }, resolve);
+  });
+  const quotaCacheByProfile = storageState.quotaCacheByProfile && typeof storageState.quotaCacheByProfile === 'object'
+    ? storageState.quotaCacheByProfile
+    : {};
+  let activeResult = null;
+
+  for (const profile of profiles) {
+    const profileStartedAt = Date.now();
+    await recordSyncLog(refreshSource, 'started', 'Sync started.', { profileId: profile.id, profileLabel: profile.label });
+    try {
+      const result = await fetchQuotaSnapshot(profile.apiToken.trim(), profile.accountId.trim());
+      const now = Date.now();
+      quotaCacheByProfile[profile.id] = {
+        profileId: profile.id,
+        quotas: result,
+        lastUpdated: now,
+        lastError: null
+      };
+      await upsertProfileHistorySnapshot(profile.id, result, now);
+      if (profile.id === settings.activeProfileId || (!activeResult && !settings.activeProfileId)) {
+        activeResult = result;
+        await chrome.storage.local.set({ quotas: result, lastUpdated: now });
+        await upsertHistorySnapshot(result, now);
       }
-    };
-    const now = Date.now();
-    cachedQuotas = result;
-    await chrome.storage.local.set({ quotas: result, lastUpdated: now });
-    await upsertHistorySnapshot(result, now);
-    await recordSyncLog(source, 'success', 'Quota data refreshed and history cache updated.', { durationMs: Date.now() - startedAt });
-    return result;
-  } catch (err) {
-    console.warn('Failed to update quotas', err);
-    await recordSyncLog(source, 'error', err.message || 'Cloudflare quota refresh failed.', { durationMs: Date.now() - startedAt });
-    // Do not overwrite cached quotas if query fails
-    return cachedQuotas;
+      await recordSyncLog(refreshSource, 'success', 'Quota data refreshed and history cache updated.', {
+        profileId: profile.id,
+        profileLabel: profile.label,
+        durationMs: Date.now() - profileStartedAt
+      });
+    } catch (err) {
+      console.warn(`Failed to update quotas for ${profile.label}`, err);
+      quotaCacheByProfile[profile.id] = Object.assign({}, quotaCacheByProfile[profile.id] || {}, {
+        profileId: profile.id,
+        lastError: err.message || 'Cloudflare quota refresh failed.',
+        lastUpdated: quotaCacheByProfile[profile.id]?.lastUpdated || null
+      });
+      await recordSyncLog(refreshSource, 'error', err.message || 'Cloudflare quota refresh failed.', {
+        profileId: profile.id,
+        profileLabel: profile.label,
+        durationMs: Date.now() - profileStartedAt
+      });
+    }
   }
+
+  if (!activeResult) {
+    const fallbackProfile = profiles.find(profile => quotaCacheByProfile[profile.id]?.quotas);
+    if (fallbackProfile) {
+      const fallbackCache = quotaCacheByProfile[fallbackProfile.id];
+      activeResult = fallbackCache.quotas;
+      await chrome.storage.local.set({ quotas: activeResult, lastUpdated: fallbackCache.lastUpdated || Date.now() });
+    }
+  }
+
+  cachedQuotaCacheByProfile = quotaCacheByProfile;
+  cachedQuotas = activeResult || quotaCacheByProfile[settings.activeProfileId]?.quotas || cachedQuotas;
+  await chrome.storage.local.set({ quotaCacheByProfile });
+  return cachedQuotas;
+}
+
+function collectMetricSummaries(quotas = {}) {
+  return [
+    { title: 'Workers Requests', percent: quotas.workers?.percent, used: quotas.workers?.used },
+    { title: 'Pages Builds', percent: quotas.pages?.percent, used: quotas.pages?.used },
+    { title: 'KV Reads', percent: quotas.kv?.readsPercent, used: quotas.kv?.reads },
+    { title: 'KV Writes', percent: quotas.kv?.writesPercent, used: quotas.kv?.writes },
+    { title: 'D1 Rows Read', percent: quotas.d1?.readsPercent, used: quotas.d1?.reads },
+    { title: 'D1 Rows Written', percent: quotas.d1?.writesPercent, used: quotas.d1?.writes },
+    { title: 'R2 Storage', percent: quotas.r2?.storagePercent, used: quotas.r2?.storage },
+    { title: 'R2 Class A Ops', percent: quotas.r2?.classAPercent, used: quotas.r2?.classA },
+    { title: 'R2 Class B Ops', percent: quotas.r2?.classBPercent, used: quotas.r2?.classB },
+    { title: 'Queues Operations', percent: quotas.queues?.percent, used: quotas.queues?.used },
+    { title: 'Hyperdrive Queries', percent: quotas.hyperdrive?.percent, used: quotas.hyperdrive?.used },
+    { title: 'Browser Run Minutes', percent: quotas.browser?.percent, used: quotas.browser?.used },
+    { title: 'Analytics Points', percent: quotas.analytics?.writesPercent, used: quotas.analytics?.writes },
+    { title: 'Workflows Invocations', percent: quotas.workflows?.percent, used: quotas.workflows?.used },
+    { title: 'Workers AI Neurons', percent: quotas.ai?.percent, used: quotas.ai?.used },
+    { title: 'DO Requests', percent: quotas.durableObjects?.requestsPercent, used: quotas.durableObjects?.requests },
+    { title: 'DO Duration', percent: quotas.durableObjects?.durationPercent, used: quotas.durableObjects?.duration },
+    { title: 'DO Rows Read', percent: quotas.durableObjects?.rowsReadPercent, used: quotas.durableObjects?.rowsRead },
+    { title: 'DO Rows Written', percent: quotas.durableObjects?.rowsWrittenPercent, used: quotas.durableObjects?.rowsWritten },
+    { title: 'DO SQL Storage', percent: quotas.durableObjects?.sqlStoragePercent, used: quotas.durableObjects?.sqlStorage }
+  ].filter(metric => Number.isFinite(Number(metric.percent)));
+}
+
+function statusForMetricPercent(percent, hasError = false) {
+  if (hasError) return 'error';
+  const value = Number(percent);
+  if (!Number.isFinite(value)) return 'info';
+  if (value >= 0.95) return 'critical';
+  if (value >= 0.8) return 'watch';
+  return 'ok';
+}
+
+function buildProfileOverview(profile, cacheEntry) {
+  const metrics = collectMetricSummaries(cacheEntry?.quotas);
+  const topMetric = metrics.sort((a, b) => Number(b.percent) - Number(a.percent))[0] || null;
+  const criticalCount = metrics.filter(metric => Number(metric.percent) >= 0.95).length;
+  const watchCount = metrics.filter(metric => Number(metric.percent) >= 0.8 && Number(metric.percent) < 0.95).length;
+  const hasError = Boolean(cacheEntry?.lastError);
+
+  return {
+    profileId: profile.id,
+    label: profile.label,
+    accountId: profile.accountId,
+    enabled: profile.enabled !== false && Boolean(profile.apiToken && profile.accountId),
+    lastUpdated: cacheEntry?.lastUpdated || null,
+    lastError: cacheEntry?.lastError || null,
+    topMetric: topMetric?.title || (hasError ? 'Sync failed' : 'No usage data'),
+    topPercent: topMetric ? Number(topMetric.percent) : null,
+    criticalCount,
+    watchCount,
+    status: statusForMetricPercent(topMetric?.percent, hasError)
+  };
+}
+
+async function getAccountOverview() {
+  const settings = await loadSettings();
+  const state = await new Promise(resolve => {
+    chrome.storage.local.get({ quotaCacheByProfile: {}, syncLogs: [] }, resolve);
+  });
+  const quotaCacheByProfile = state.quotaCacheByProfile && typeof state.quotaCacheByProfile === 'object'
+    ? state.quotaCacheByProfile
+    : {};
+  cachedQuotaCacheByProfile = quotaCacheByProfile;
+  const profiles = settings.profiles || [];
+  const accounts = profiles.map(profile => buildProfileOverview(profile, quotaCacheByProfile[profile.id]));
+  const enabledAccounts = accounts.filter(account => account.enabled);
+  const criticalCount = enabledAccounts.filter(account => account.status === 'critical').length;
+  const watchCount = enabledAccounts.filter(account => account.status === 'watch').length;
+  const errorCount = enabledAccounts.filter(account => account.status === 'error').length;
+  const topAccount = enabledAccounts
+    .filter(account => Number.isFinite(Number(account.topPercent)))
+    .sort((a, b) => Number(b.topPercent) - Number(a.topPercent))[0] || null;
+  const lastUpdatedValues = enabledAccounts
+    .map(account => Number(account.lastUpdated) || 0)
+    .filter(value => value > 0);
+
+  return {
+    activeProfileId: settings.activeProfileId,
+    accounts,
+    summary: {
+      total: enabledAccounts.length,
+      criticalCount,
+      watchCount,
+      errorCount,
+      topAccount,
+      lastUpdated: lastUpdatedValues.length ? Math.max(...lastUpdatedValues) : null
+    },
+    syncLogs: Array.isArray(state.syncLogs) ? state.syncLogs.slice(-20) : []
+  };
 }
 
 // Create an alarm on installation to update quotas regularly.
@@ -978,6 +1286,16 @@ chrome.alarms.onAlarm.addListener(alarm => {
 // Message listener for popup to request data or trigger refresh
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'getQuotas') {
+    if (message.profileId) {
+      chrome.storage.local.get({ quotaCacheByProfile: {}, historyByProfile: {} }, result => {
+        const cache = result.quotaCacheByProfile?.[message.profileId] || {};
+        sendResponse({
+          data: cache.quotas || null,
+          history: result.historyByProfile?.[message.profileId] || []
+        });
+      });
+      return true;
+    }
     // If cachedQuotas is null, attempt to load from storage
     if (cachedQuotas === null) {
       chrome.storage.local.get(['quotas'], result => {
@@ -988,9 +1306,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } else {
       sendResponse({ data: cachedQuotas });
     }
+  } else if (message.action === 'getAccountOverview') {
+    getAccountOverview().then(overview => {
+      sendResponse({ data: overview });
+    }).catch(err => {
+      sendResponse({ error: err.message || 'Could not load account overview.' });
+    });
+    return true;
   } else if (message.action === 'refreshQuotas') {
-    updateQuotas(message.source || 'manual').then(() => {
-      sendResponse({ data: cachedQuotas });
+    updateQuotas({ source: message.source || 'manual', profileId: message.profileId || '' }).then(() => {
+      if (message.profileId) {
+        chrome.storage.local.get({ quotaCacheByProfile: {} }, result => {
+          sendResponse({ data: result.quotaCacheByProfile?.[message.profileId]?.quotas || null });
+        });
+        return;
+      }
+      getAccountOverview().then(overview => {
+        sendResponse({ data: cachedQuotas, overview });
+      });
     });
     return true; // keep message channel open
   }

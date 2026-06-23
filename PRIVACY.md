@@ -8,17 +8,17 @@ Cloudflare Quota Monitor is a Chrome extension that helps users monitor Cloudfla
 
 The extension may handle:
 
-- Cloudflare API token and Cloudflare Account ID entered by the user.
+- Cloudflare API tokens, Cloudflare Account IDs, and local account profile labels entered by the user.
 - Cloudflare quota telemetry, including usage counts, limits, percentages, timestamps, and local history samples returned by Cloudflare APIs.
-- Optional local configuration export files selected by the user. Exported files include the Cloudflare API token, account ID, latest quota cache, and local dashboard history.
+- Optional local configuration export files selected by the user. Exported files include account profiles, Cloudflare API tokens, account IDs, latest quota cache, and local dashboard history.
 - Extension preferences such as language selection and cached refresh state.
 
 ## How data is used
 
 Data is used only to:
 
-- Verify the configured Cloudflare API token.
-- Read Cloudflare quota and analytics telemetry for the configured account.
+- Verify the configured Cloudflare API tokens.
+- Read Cloudflare quota and analytics telemetry for the configured accounts.
 - Display quota usage, risk levels, local history charts, and API capability test results.
 - Store settings and cached quota results locally in the user's Chrome profile.
 - Run user-initiated local configuration import and export.
@@ -27,9 +27,9 @@ Data is used only to:
 
 Settings and cached quota results are stored in `chrome.storage.local` on the user's browser profile.
 
-The extension sends the Cloudflare API token only to `https://api.cloudflare.com/` for token verification and read-only quota telemetry requests.
+The extension sends Cloudflare API tokens only to `https://api.cloudflare.com/` for token verification and read-only quota telemetry requests for the configured accounts.
 
-If the user exports configuration, the extension creates a local JSON file through the browser. The exported file includes sensitive settings such as the Cloudflare API token and account ID, plus cached monitoring data and local dashboard history. Users should store exported files securely and import only files they trust.
+If the user exports configuration, the extension creates a local JSON file through the browser. The exported file includes sensitive settings such as account profiles, Cloudflare API tokens, and account IDs, plus cached monitoring data and local dashboard history. Users should store exported files securely and import only files they trust.
 
 ## Data sharing
 
@@ -50,7 +50,7 @@ The extension requests:
 - `storage`: save settings and cached quota data locally.
 - `alarms`: refresh quota data on a schedule.
 - `notifications`: notify the user about quota risk when applicable.
-- `https://api.cloudflare.com/*`: verify tokens and read Cloudflare quota telemetry.
+- `https://api.cloudflare.com/*`: verify tokens and read Cloudflare quota telemetry for configured accounts.
 The extension does not request optional broad host permissions for backup or restore.
 
 ## Contact

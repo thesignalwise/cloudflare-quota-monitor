@@ -1,5 +1,5 @@
 // popup.js
-// Renders a dense quota cockpit in the extension popup.
+// Renders a compact multi-account quota cockpit in the extension popup.
 
 document.addEventListener('DOMContentLoaded', () => {
   const statusEl = document.getElementById('status');
@@ -7,39 +7,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const focusStripEl = document.getElementById('focusStrip');
   const refreshBtn = document.getElementById('refreshBtn');
   const dashboardBtn = document.getElementById('dashboardBtn');
-  const summaryBadge = document.getElementById('summaryBadge');
+  const settingsBtn = document.getElementById('settingsBtn');
   const topPercentEl = document.getElementById('topPercent');
   const topLabelEl = document.getElementById('topLabel');
   const criticalCountEl = document.getElementById('criticalCount');
   const watchCountEl = document.getElementById('watchCount');
   const trackedCountEl = document.getElementById('trackedCount');
   const hasChromeRuntime = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
+  let lastOverview = null;
 
-  const DEMO_QUOTAS = {
-    workers: { used: 85420, limit: 100000, percent: 0.8542, unit: 'requests', period: 'daily' },
-    pages: { used: 210, limit: 500, percent: 0.42, unit: 'builds', period: 'monthly' },
-    kv: { reads: 1215000, writes: 680, deletes: 120, lists: 48, readsLimit: 100000, writesLimit: 1000, deletesLimit: 1000, listsLimit: 1000, readsPercent: 0.1215, writesPercent: 0.68, deletesPercent: 0.12, listsPercent: 0.048 },
-    d1: { reads: 3800000, writes: 94000, readsLimit: 5000000, writesLimit: 100000, readsPercent: 0.76, writesPercent: 0.94 },
-    r2: { storage: 7.5 * 1024 * 1024 * 1024, classA: 640000, classB: 1800000, storageLimit: 10 * 1024 * 1024 * 1024, classALimit: 1000000, classBLimit: 10000000, storagePercent: 0.75, classAPercent: 0.64, classBPercent: 0.18 },
-    queues: { used: 3600, limit: 10000, percent: 0.36, unit: 'ops' },
-    hyperdrive: { used: 48000, limit: 100000, percent: 0.48, unit: 'queries' },
-    browser: { used: 6.2, limit: 10, percent: 0.62, unit: 'minutes' },
-    logs: { used: null, supported: false, billableBytes: 3.2 * 1024 * 1024, limit: 200000, percent: null, unit: 'events' },
-    analytics: { writes: 72000, reads: null, readsSupported: false, writesLimit: 100000, readsLimit: 10000, writesPercent: 0.72, readsPercent: null, unit: { writes: 'points', reads: 'queries' } },
-    workflows: { used: 49000, limit: 100000, percent: 0.49, unit: 'invocations' },
-    ai: { used: 8200, limit: 10000, percent: 0.82, unit: 'neurons' },
-    durableObjects: { requests: 18200, duration: 420, rowsRead: 620000, rowsWritten: 24000, sqlStorage: 1.4 * 1024 * 1024 * 1024, requestsLimit: 100000, durationLimit: 13000, rowsReadLimit: 5000000, rowsWrittenLimit: 100000, sqlStorageLimit: 5 * 1024 * 1024 * 1024, requestsPercent: 0.182, durationPercent: 0.032, rowsReadPercent: 0.124, rowsWrittenPercent: 0.24, sqlStoragePercent: 0.28 }
-  };
-
-  const ICONS = {
-    workers: '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M7 8h10M7 12h6M7 16h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/></svg>',
-    pages: '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4V5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 9h16M8 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-    data: '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M5 7c0-1.66 3.13-3 7-3s7 1.34 7 3-3.13 3-7 3-7-1.34-7-3Z" stroke="currentColor" stroke-width="2"/><path d="M5 7v5c0 1.66 3.13 3 7 3s7-1.34 7-3V7M5 12v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5" stroke="currentColor" stroke-width="2"/></svg>',
-    storage: '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M4 8.5 12 4l8 4.5V18l-8 4-8-4V8.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m4.5 9 7.5 4 7.5-4M12 13v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-    queue: '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 4v16M16 4v16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-    graph: '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    durable: '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M7 8.5c0-1.38 2.24-2.5 5-2.5s5 1.12 5 2.5S14.76 11 12 11 7 9.88 7 8.5Z" stroke="currentColor" stroke-width="2"/><path d="M7 8.5v7c0 1.38 2.24 2.5 5 2.5s5-1.12 5-2.5v-7M7 12c0 1.38 2.24 2.5 5 2.5s5-1.12 5-2.5" stroke="currentColor" stroke-width="2"/></svg>',
-    ai: '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.64 5.64l2.12 2.12M16.24 16.24l2.12 2.12M18.36 5.64l-2.12 2.12M7.76 16.24l-2.12 2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" stroke="currentColor" stroke-width="2"/></svg>'
+  const DEMO_OVERVIEW = {
+    activeProfileId: 'profile-production',
+    summary: {
+      total: 5,
+      criticalCount: 1,
+      watchCount: 2,
+      errorCount: 1,
+      lastUpdated: Date.now() - 120000,
+      topAccount: {
+        profileId: 'profile-production',
+        label: 'Production',
+        topMetric: 'D1 Rows Written',
+        topPercent: 0.94
+      }
+    },
+    accounts: [
+      { profileId: 'profile-production', label: 'Production', accountId: '01a91f', topMetric: 'D1 Rows Written', topPercent: 0.94, criticalCount: 1, watchCount: 0, status: 'critical', lastUpdated: Date.now() - 30000 },
+      { profileId: 'profile-ai-lab', label: 'AI Lab', accountId: '4e88c4', topMetric: 'Workers AI Neurons', topPercent: 0.88, criticalCount: 0, watchCount: 1, status: 'watch', lastUpdated: Date.now() - 120000 },
+      { profileId: 'profile-client-pages', label: 'Client Pages', accountId: '21b672', topMetric: 'Pages Builds', topPercent: 0.76, criticalCount: 0, watchCount: 1, status: 'watch', lastUpdated: Date.now() - 300000 },
+      { profileId: 'profile-dev', label: 'Dev Sandbox', accountId: 'aa42d0', topMetric: 'Workers Requests', topPercent: 0.43, criticalCount: 0, watchCount: 0, status: 'ok', lastUpdated: Date.now() - 480000 },
+      { profileId: 'profile-archive', label: 'Archive', accountId: 'be19ab', topMetric: 'Sync failed', topPercent: null, criticalCount: 0, watchCount: 0, status: 'error', lastError: 'Token expired', lastUpdated: Date.now() - 600000 }
+    ]
   };
 
   function escapeHtml(value) {
@@ -52,27 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }[char]));
   }
 
-  function safeNumber(value) {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : 0;
-  }
-
   function hasMetricValue(value) {
     return value !== null && value !== undefined && Number.isFinite(Number(value));
-  }
-
-  function formatNumber(value) {
-    const number = safeNumber(value);
-    return number % 1 === 0 ? number.toLocaleString() : number.toLocaleString(undefined, { maximumFractionDigits: 1 });
-  }
-
-  function formatBytes(bytes) {
-    const value = safeNumber(bytes);
-    const GB = 1024 * 1024 * 1024;
-    const MB = 1024 * 1024;
-    if (value >= GB) return `${(value / GB).toFixed(1)} GB`;
-    if (value >= MB) return `${(value / MB).toFixed(1)} MB`;
-    return `${formatNumber(value)} B`;
   }
 
   function displayPercent(value) {
@@ -80,122 +59,89 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.max(0, Math.round(Number(value) * 100));
   }
 
-  function progressPercent(value) {
-    const percent = displayPercent(value);
-    return percent === null ? 0 : Math.min(100, percent);
+  function t(value) {
+    return window.quotaI18n?.t ? window.quotaI18n.t(value) : value;
   }
 
-  function isVisibleMetric(item) {
-    const percent = displayPercent(item.percent);
-    return percent !== null && percent > 0;
+  function statusLabel(status) {
+    const label = {
+      critical: 'Critical',
+      watch: 'Watch',
+      ok: 'OK',
+      error: 'Error',
+      info: 'Info'
+    }[status] || 'Info';
+    return t(label);
   }
 
-  function statusForPercent(percent) {
-    if (!hasMetricValue(percent)) return { level: 'info', label: 'Info' };
-    const value = Number(percent);
-    if (value >= 0.95) return { level: 'danger', label: 'Critical' };
-    if (value >= 0.8) return { level: 'warning', label: 'Watch' };
-    return { level: 'good', label: 'OK' };
-  }
-
-  function metric(service, label, source, options = {}) {
+  function statusClass(status) {
     return {
-      service,
-      label,
-      title: `${service} ${label}`,
-      icon: options.icon || 'graph',
-      period: options.period || 'Daily',
-      used: source?.used,
-      limit: source?.limit,
-      percent: source?.percent,
-      unit: source?.unit,
-      format: options.format || 'number',
-      unavailable: options.unavailable || false
-    };
+      critical: 'danger',
+      watch: 'warning',
+      ok: 'good',
+      error: 'danger',
+      info: 'info'
+    }[status] || 'info';
   }
 
-  function buildMetrics(q = {}) {
-    return [
-      metric('Workers', 'Requests', q.workers, { icon: 'workers' }),
-      metric('Pages', 'Builds', q.pages, { icon: 'pages', period: 'Monthly' }),
-      metric('KV', 'Reads', { used: q.kv?.reads, limit: q.kv?.readsLimit, percent: q.kv?.readsPercent, unit: 'reads' }, { icon: 'data' }),
-      metric('KV', 'Writes', { used: q.kv?.writes, limit: q.kv?.writesLimit, percent: q.kv?.writesPercent, unit: 'writes' }, { icon: 'data' }),
-      metric('KV', 'Deletes', { used: q.kv?.deletes, limit: q.kv?.deletesLimit, percent: q.kv?.deletesPercent, unit: 'deletes' }, { icon: 'data' }),
-      metric('KV', 'Lists', { used: q.kv?.lists, limit: q.kv?.listsLimit, percent: q.kv?.listsPercent, unit: 'lists' }, { icon: 'data' }),
-      metric('D1', 'Reads', { used: q.d1?.reads, limit: q.d1?.readsLimit, percent: q.d1?.readsPercent, unit: 'rows' }, { icon: 'data' }),
-      metric('D1', 'Writes', { used: q.d1?.writes, limit: q.d1?.writesLimit, percent: q.d1?.writesPercent, unit: 'rows' }, { icon: 'data' }),
-      metric('R2', 'Storage', { used: q.r2?.storage, limit: q.r2?.storageLimit, percent: q.r2?.storagePercent }, { icon: 'storage', period: 'Monthly', format: 'bytes' }),
-      metric('R2', 'Class A', { used: q.r2?.classA, limit: q.r2?.classALimit, percent: q.r2?.classAPercent, unit: 'ops' }, { icon: 'storage', period: 'Monthly' }),
-      metric('R2', 'Class B', { used: q.r2?.classB, limit: q.r2?.classBLimit, percent: q.r2?.classBPercent, unit: 'ops' }, { icon: 'storage', period: 'Monthly' }),
-      metric('Queues', 'Ops', q.queues, { icon: 'queue' }),
-      metric('Hyperdrive', 'Queries', q.hyperdrive, { icon: 'data' }),
-      metric('Browser Run', 'Minutes', q.browser, { icon: 'graph' }),
-      metric('Workers Logs', 'Events', q.logs, { icon: 'graph', unavailable: q.logs?.supported === false }),
-      metric('Logs', 'Ingested', { used: q.logs?.billableBytes, limit: null, percent: null, unit: '' }, { icon: 'graph', format: 'bytes' }),
-      metric('Analytics', 'Points', { used: q.analytics?.writes, limit: q.analytics?.writesLimit, percent: q.analytics?.writesPercent, unit: q.analytics?.unit?.writes }, { icon: 'graph' }),
-      metric('Analytics', 'Queries', { used: q.analytics?.reads, limit: q.analytics?.readsLimit, percent: q.analytics?.readsPercent, unit: q.analytics?.unit?.reads }, { icon: 'graph', unavailable: q.analytics?.readsSupported === false }),
-      metric('Workflows', 'Invocations', q.workflows, { icon: 'queue' }),
-      metric('Workers AI', 'Neurons', q.ai, { icon: 'ai' }),
-      metric('DO', 'Requests', { used: q.durableObjects?.requests, limit: q.durableObjects?.requestsLimit, percent: q.durableObjects?.requestsPercent, unit: 'requests' }, { icon: 'durable' }),
-      metric('DO', 'Duration', { used: q.durableObjects?.duration, limit: q.durableObjects?.durationLimit, percent: q.durableObjects?.durationPercent, unit: 'GB-s' }, { icon: 'durable' }),
-      metric('DO', 'Rows Read', { used: q.durableObjects?.rowsRead, limit: q.durableObjects?.rowsReadLimit, percent: q.durableObjects?.rowsReadPercent, unit: 'rows' }, { icon: 'durable' }),
-      metric('DO', 'Rows Written', { used: q.durableObjects?.rowsWritten, limit: q.durableObjects?.rowsWrittenLimit, percent: q.durableObjects?.rowsWrittenPercent, unit: 'rows' }, { icon: 'durable' }),
-      metric('DO', 'SQL Storage', { used: q.durableObjects?.sqlStorage, limit: q.durableObjects?.sqlStorageLimit, percent: q.durableObjects?.sqlStoragePercent }, { icon: 'durable', period: 'Total', format: 'bytes' })
-    ];
+  function accountSuffix(accountId) {
+    const value = String(accountId || '').trim();
+    return value ? `...${value.slice(-5)}` : t('No account ID');
   }
 
-  function valueText(item) {
-    if (item.unavailable || !hasMetricValue(item.used)) return 'N/A';
-    return item.format === 'bytes' ? formatBytes(item.used) : formatNumber(item.used);
+  function formatRelativeTime(timestamp) {
+    const value = Number(timestamp);
+    if (!Number.isFinite(value) || value <= 0) return t('No sync');
+    const seconds = Math.max(0, Math.round((Date.now() - value) / 1000));
+    if (seconds < 45) return t('Just now');
+    const locale = window.quotaI18n?.locale || document.documentElement.lang || navigator.language || 'en';
+    const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+    if (seconds < 3600) return formatter.format(-Math.round(seconds / 60), 'minute');
+    if (seconds < 86400) return formatter.format(-Math.round(seconds / 3600), 'hour');
+    return formatter.format(-Math.round(seconds / 86400), 'day');
   }
 
-  function limitText(item) {
-    if (item.unavailable) return item.limit ? `${formatNumber(item.limit)} ${item.unit || ''}`.trim() : 'API metric';
-    if (!hasMetricValue(item.limit)) return item.unit || 'tracked';
-    const limit = item.format === 'bytes' ? formatBytes(item.limit) : formatNumber(item.limit);
-    return `${limit}${item.unit ? ` ${item.unit}` : ''}`;
+  function rankedAccounts(overview) {
+    return [...(overview?.accounts || [])]
+      .filter(account => account.enabled !== false)
+      .sort((a, b) => {
+        const statusRank = { error: 4, critical: 3, watch: 2, ok: 1, info: 0 };
+        const statusDelta = (statusRank[b.status] || 0) - (statusRank[a.status] || 0);
+        if (statusDelta) return statusDelta;
+        return (Number(b.topPercent) || -1) - (Number(a.topPercent) || -1);
+      });
   }
 
-  function sortByAttention(metrics) {
-    return [...metrics].sort((a, b) => {
-      const aPercent = hasMetricValue(a.percent) ? Number(a.percent) : -1;
-      const bPercent = hasMetricValue(b.percent) ? Number(b.percent) : -1;
-      if (bPercent !== aPercent) return bPercent - aPercent;
-      return a.title.localeCompare(b.title);
-    });
-  }
-
-  function renderFocusItem(item) {
-    const status = statusForPercent(item.percent);
-    const percent = displayPercent(item.percent);
+  function renderAccountRow(account, index) {
+    const percent = displayPercent(account.topPercent);
+    const status = account.status || 'info';
+    const statusLevel = statusClass(status);
+    const href = `dashboard.html?profile=${encodeURIComponent(account.profileId)}`;
     return `
-      <article class="attention-item is-${status.level}">
-        <div>
-          <strong>${escapeHtml(percent === null ? 'Info' : `${percent}%`)}</strong>
-          <span>${escapeHtml(item.title)}</span>
-        </div>
-        <em>${escapeHtml(valueText(item))}</em>
-      </article>
+      <a class="account-risk-row is-${statusLevel}" href="${escapeHtml(href)}" data-profile-id="${escapeHtml(account.profileId)}">
+        <span class="account-risk-row__rank">${index + 1}</span>
+        <span class="account-risk-row__main">
+          <strong>${escapeHtml(account.label || t('Cloudflare account'))}</strong>
+          <small>${escapeHtml(accountSuffix(account.accountId))}</small>
+        </span>
+        <span class="account-risk-row__metric">${escapeHtml(account.lastError || account.topMetric || t('No usage data'))}</span>
+        <span class="account-risk-row__percent">${escapeHtml(percent === null ? t('Error') : `${percent}%`)}</span>
+        <span class="account-risk-row__status">${escapeHtml(statusLabel(status))}</span>
+        <span class="account-risk-row__sync">${escapeHtml(formatRelativeTime(account.lastUpdated))}</span>
+      </a>
     `;
   }
 
-  function renderMiniCard(item) {
-    const status = statusForPercent(item.percent);
-    const percent = displayPercent(item.percent);
-    const progress = progressPercent(item.percent);
+  function renderFocusItem(account) {
+    const percent = displayPercent(account.topPercent);
+    const statusLevel = statusClass(account.status);
     return `
-      <article class="mini-card is-${status.level}">
-        <div class="mini-card__top">
-          <div class="mini-icon" aria-hidden="true">${ICONS[item.icon] || ICONS.graph}</div>
-          <span>${escapeHtml(percent === null ? status.label : `${percent}%`)}</span>
+      <article class="attention-item is-${statusLevel}">
+        <div>
+          <strong>${escapeHtml(percent === null ? statusLabel(account.status) : `${percent}%`)}</strong>
+          <span>${escapeHtml(account.label || t('Cloudflare account'))}</span>
         </div>
-        <h3>${escapeHtml(item.service)}</h3>
-        <p>${escapeHtml(item.label)}</p>
-        <strong>${escapeHtml(valueText(item))}</strong>
-        <small>/${escapeHtml(limitText(item))}</small>
-        <div class="progress" aria-label="${escapeHtml(item.title)} usage ${progress}%">
-          <div class="progress-inner" style="--progress: ${progress}%"></div>
-        </div>
+        <em>${escapeHtml(account.lastError || account.topMetric || t('No usage data'))}</em>
       </article>
     `;
   }
@@ -205,79 +151,88 @@ document.addEventListener('DOMContentLoaded', () => {
     statusEl.className = type ? `state-panel ${type}` : 'state-panel';
   }
 
-  function updateSummary(metrics) {
-    const ranked = sortByAttention(metrics).filter(item => hasMetricValue(item.percent));
-    const top = ranked[0];
-    const critical = metrics.filter(item => hasMetricValue(item.percent) && Number(item.percent) >= 0.95).length;
-    const watch = metrics.filter(item => hasMetricValue(item.percent) && Number(item.percent) >= 0.8 && Number(item.percent) < 0.95).length;
+  function renderOverview(overview) {
+    lastOverview = overview;
+    const accounts = rankedAccounts(overview);
+    const summary = overview?.summary || {};
+    const topAccount = summary.topAccount || accounts.find(account => hasMetricValue(account.topPercent));
+    const topPercent = displayPercent(topAccount?.topPercent);
 
-    criticalCountEl.textContent = String(critical);
-    watchCountEl.textContent = String(watch);
-    trackedCountEl.textContent = String(metrics.length);
-    if (summaryBadge) summaryBadge.textContent = critical ? 'Critical' : watch ? 'Watch' : 'Healthy';
-    topPercentEl.textContent = top ? `${displayPercent(top.percent)}%` : '--';
-    topLabelEl.textContent = top ? top.title : 'No quota data';
-  }
+    criticalCountEl.textContent = String(summary.criticalCount || 0);
+    watchCountEl.textContent = String(summary.watchCount || 0);
+    trackedCountEl.textContent = String(summary.total || accounts.length || 0);
+    topPercentEl.textContent = topPercent === null ? '--' : `${topPercent}%`;
+    topLabelEl.textContent = topAccount
+      ? `${topAccount.label} · ${topAccount.topMetric}`
+      : t('No account data');
 
-  function renderQuotas(quotas) {
     cardsEl.innerHTML = '';
     focusStripEl.innerHTML = '';
-    if (!quotas) {
-      setStatus('Add a Cloudflare API token and account ID in Settings.', 'is-error');
+
+    if (!accounts.length) {
+      setStatus(t('Add at least one Cloudflare account in API Settings.'), 'is-error');
       cardsEl.hidden = true;
       focusStripEl.hidden = true;
-      if (summaryBadge) summaryBadge.textContent = 'Setup';
-      topPercentEl.textContent = '--';
-      topLabelEl.textContent = 'Not configured';
-      criticalCountEl.textContent = '0';
-      watchCountEl.textContent = '0';
-      trackedCountEl.textContent = '0';
       return;
     }
 
     setStatus('');
-    const metrics = buildMetrics(quotas).filter(isVisibleMetric);
-    const ranked = sortByAttention(metrics);
-    updateSummary(metrics);
-
-    if (!ranked.length) {
-      setStatus('No non-zero quota usage in the latest sample.');
-      focusStripEl.hidden = true;
-      cardsEl.hidden = true;
-      return;
-    }
-
     focusStripEl.hidden = false;
     cardsEl.hidden = false;
-    focusStripEl.innerHTML = ranked.slice(0, 3).map(renderFocusItem).join('');
-    cardsEl.innerHTML = ranked.map(renderMiniCard).join('');
+    cardsEl.className = 'account-risk-list';
+    focusStripEl.innerHTML = accounts.slice(0, 3).map(renderFocusItem).join('');
+    cardsEl.innerHTML = accounts.slice(0, 5).map(renderAccountRow).join('');
   }
 
   function loadData() {
     if (!hasChromeRuntime) {
-      if (summaryBadge) summaryBadge.textContent = 'Demo';
-      renderQuotas(DEMO_QUOTAS);
+      renderOverview(DEMO_OVERVIEW);
       return;
     }
 
-    chrome.runtime.sendMessage({ action: 'getQuotas' }, response => {
-      renderQuotas(response ? response.data : null);
+    chrome.runtime.sendMessage({ action: 'getAccountOverview' }, response => {
+      renderOverview(response ? response.data : null);
     });
   }
 
   refreshBtn.addEventListener('click', () => {
     if (!hasChromeRuntime) {
-      if (summaryBadge) summaryBadge.textContent = 'Demo';
-      renderQuotas(DEMO_QUOTAS);
+      renderOverview(DEMO_OVERVIEW);
       return;
     }
 
     refreshBtn.disabled = true;
-    setStatus('Refreshing quota data...');
-    chrome.runtime.sendMessage({ action: 'refreshQuotas' }, response => {
+    refreshBtn.classList.add('is-syncing');
+    refreshBtn.setAttribute('aria-busy', 'true');
+    chrome.runtime.sendMessage({ action: 'refreshQuotas', source: 'popup' }, () => {
       refreshBtn.disabled = false;
-      renderQuotas(response ? response.data : null);
+      refreshBtn.classList.remove('is-syncing');
+      refreshBtn.removeAttribute('aria-busy');
+      loadData();
     });
+  });
+
+  cardsEl.addEventListener('click', event => {
+    const target = event.target.closest('[data-profile-id]');
+    if (!target) return;
+    event.preventDefault();
+    const url = target.getAttribute('href');
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.runtime) {
+      chrome.tabs.create({ url: chrome.runtime.getURL(url) });
+      return;
+    }
+    window.location.href = url;
+  });
+
+  settingsBtn.addEventListener('click', () => {
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      if (chrome.tabs) {
+        chrome.tabs.create({ url: chrome.runtime.getURL('options.html') });
+        return;
+      }
+    }
+
+    window.location.href = 'options.html';
   });
 
   dashboardBtn.addEventListener('click', () => {
@@ -287,6 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.location.href = 'dashboard.html';
+  });
+
+  window.addEventListener('quota-i18n-ready', () => {
+    if (lastOverview) renderOverview(lastOverview);
   });
 
   loadData();

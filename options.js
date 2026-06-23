@@ -2,10 +2,15 @@
 // Handles loading, saving, testing, and local config import/export.
 
 document.addEventListener('DOMContentLoaded', () => {
+  const profileSelect = document.getElementById('profileSelect');
+  const profileLabelInput = document.getElementById('profileLabel');
   const apiTokenInput = document.getElementById('apiToken');
   const accountIdInput = document.getElementById('accountId');
   const saveBtn = document.getElementById('saveBtn');
   const testApiBtn = document.getElementById('testApiBtn');
+  const newProfileBtn = document.getElementById('newProfileBtn');
+  const deleteProfileBtn = document.getElementById('deleteProfileBtn');
+  const accountProfileListEl = document.getElementById('accountProfileList');
   const exportConfigBtn = document.getElementById('exportConfigBtn');
   const importConfigBtn = document.getElementById('importConfigBtn');
   const configFileInput = document.getElementById('configFileInput');
@@ -19,7 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const syncLogRefreshBtn = document.getElementById('syncLogRefreshBtn');
   const hasChromeStorage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
   const hasChromeRuntime = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
-  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.3.8' };
+  const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : { version: '0.4.0' };
+  let accountProfiles = [];
+  let activeProfileId = '';
 
   const API_CAPABILITIES = [
     {
@@ -279,17 +286,143 @@ document.addEventListener('DOMContentLoaded', () => {
     return input ? input.value : fallback;
   }
 
-  function currentSettings(existing = {}) {
+  function profileIdFor(accountId, index = 0) {
+    const normalized = String(accountId || 'account')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 28) || 'account';
+    return `profile-${normalized}${index ? `-${index}` : ''}`;
+  }
+
+  function sanitizeProfile(profile = {}, index = 0) {
+    const accountId = typeof profile.accountId === 'string' ? profile.accountId.trim() : '';
+    const apiToken = typeof profile.apiToken === 'string' ? profile.apiToken.trim() : '';
+    const id = typeof profile.id === 'string' && profile.id.trim()
+      ? profile.id.trim()
+      : profileIdFor(accountId, index);
+    const label = typeof profile.label === 'string' && profile.label.trim()
+      ? profile.label.trim()
+      : `Cloudflare ${accountId ? accountId.slice(-6) : index + 1}`;
+
     return {
-      apiToken: getInputValue(apiTokenInput, existing.apiToken || ''),
-      accountId: getInputValue(accountIdInput, existing.accountId || '')
+      id,
+      label,
+      apiToken,
+      accountId,
+      enabled: profile.enabled !== false,
+      createdAt: Number.isFinite(Number(profile.createdAt)) ? Number(profile.createdAt) : Date.now(),
+      updatedAt: Number.isFinite(Number(profile.updatedAt)) ? Number(profile.updatedAt) : Date.now()
     };
   }
 
+  function normalizeSettings(settings = {}) {
+    const profiles = Array.isArray(settings.profiles)
+      ? settings.profiles.map(sanitizeProfile).filter(profile => profile.apiToken || profile.accountId || profile.label)
+      : [];
+
+    if (!profiles.length && (settings.apiToken || settings.accountId)) {
+      profiles.push(sanitizeProfile({
+        id: profileIdFor(settings.accountId),
+        label: 'Default account',
+        apiToken: settings.apiToken || '',
+        accountId: settings.accountId || '',
+        enabled: true
+      }));
+    }
+
+    let activeId = typeof settings.activeProfileId === 'string' ? settings.activeProfileId : '';
+    if (!profiles.some(profile => profile.id === activeId)) {
+      activeId = profiles[0]?.id || '';
+    }
+    const activeProfile = profiles.find(profile => profile.id === activeId) || profiles[0] || {};
+    return {
+      schemaVersion: 3,
+      profiles,
+      activeProfileId: activeId,
+      apiToken: activeProfile.apiToken || settings.apiToken || '',
+      accountId: activeProfile.accountId || settings.accountId || ''
+    };
+  }
+
+  function ensureEditableProfile() {
+    if (!accountProfiles.length) {
+      const profile = sanitizeProfile({
+        id: `profile-${Date.now()}`,
+        label: 'New account',
+        enabled: true
+      });
+      accountProfiles = [profile];
+      activeProfileId = profile.id;
+    }
+  }
+
+  function activeProfile() {
+    return accountProfiles.find(profile => profile.id === activeProfileId) || accountProfiles[0] || null;
+  }
+
+  function t(value) {
+    return window.quotaI18n?.t ? window.quotaI18n.t(value) : value;
+  }
+
+  function displayProfileLabel(profile) {
+    const label = profile?.label || 'Cloudflare account';
+    return ['New account', 'Default account', 'Cloudflare account'].includes(label) ? t(label) : label;
+  }
+
+  function currentSettings(existing = {}) {
+    const base = normalizeSettings(existing);
+    if (!accountProfiles.length) {
+      accountProfiles = base.profiles;
+      activeProfileId = base.activeProfileId;
+    }
+    ensureEditableProfile();
+    const selected = activeProfile();
+    const updatedProfile = Object.assign({}, selected, {
+      label: getInputValue(profileLabelInput, selected?.label || 'Cloudflare account'),
+      apiToken: getInputValue(apiTokenInput, selected?.apiToken || ''),
+      accountId: getInputValue(accountIdInput, selected?.accountId || ''),
+      enabled: true,
+      updatedAt: Date.now()
+    });
+    accountProfiles = accountProfiles.map(profile => profile.id === updatedProfile.id ? updatedProfile : profile);
+    return {
+      schemaVersion: 3,
+      activeProfileId: updatedProfile.id,
+      profiles: accountProfiles,
+      apiToken: updatedProfile.apiToken,
+      accountId: updatedProfile.accountId
+    };
+  }
+
+  function renderProfileList() {
+    if (profileSelect) {
+      profileSelect.innerHTML = accountProfiles.map(profile => `
+        <option value="${escapeHtml(profile.id)}"${profile.id === activeProfileId ? ' selected' : ''}>${escapeHtml(displayProfileLabel(profile) || profile.accountId || t('Cloudflare account'))}</option>
+      `).join('');
+    }
+
+    if (accountProfileListEl) {
+      accountProfileListEl.innerHTML = accountProfiles.map(profile => `
+        <article class="account-profile-chip${profile.id === activeProfileId ? ' is-active' : ''}" data-profile-id="${escapeHtml(profile.id)}">
+          <strong>${escapeHtml(displayProfileLabel(profile))}</strong>
+          <span>${escapeHtml(profile.accountId ? `...${profile.accountId.slice(-6)}` : t('No account ID'))}</span>
+        </article>
+      `).join('');
+    }
+    if (deleteProfileBtn) deleteProfileBtn.disabled = accountProfiles.length <= 1;
+  }
+
   function applySettings(settings) {
-    const data = settings || {};
-    if (apiTokenInput) apiTokenInput.value = data.apiToken || '';
-    if (accountIdInput) accountIdInput.value = data.accountId || '';
+    const data = normalizeSettings(settings || {});
+    accountProfiles = data.profiles;
+    activeProfileId = data.activeProfileId;
+    ensureEditableProfile();
+    const profile = activeProfile();
+    if (profileLabelInput) profileLabelInput.value = profile?.label || '';
+    if (apiTokenInput) apiTokenInput.value = profile?.apiToken || '';
+    if (accountIdInput) accountIdInput.value = profile?.accountId || '';
+    renderProfileList();
   }
 
   function loadStoredSettings(callback) {
@@ -320,10 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function sanitizeSettings(settings = {}) {
-    return {
-      apiToken: typeof settings.apiToken === 'string' ? settings.apiToken : '',
-      accountId: typeof settings.accountId === 'string' ? settings.accountId : ''
-    };
+    return normalizeSettings(settings);
   }
 
   function safeJsonParse(value, fallback) {
@@ -356,6 +486,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       quotas: data.quotas || null,
       history: sanitizeHistory(data.history),
+      quotaCacheByProfile: data.quotaCacheByProfile && typeof data.quotaCacheByProfile === 'object' ? data.quotaCacheByProfile : {},
+      historyByProfile: data.historyByProfile && typeof data.historyByProfile === 'object' ? data.historyByProfile : {},
       lastUpdated: Number.isFinite(Number(data.lastUpdated)) ? Number(data.lastUpdated) : null,
       syncLogs: sanitizeSyncLogs(data.syncLogs)
     };
@@ -389,8 +521,8 @@ document.addEventListener('DOMContentLoaded', () => {
       keys.forEach(key => {
         if (key === 'settings') {
           result.settings = safeJsonParse(localStorage.getItem('quotaMonitorSettings'), {});
-        } else if (key === 'quotas' || key === 'history' || key === 'syncLogs') {
-          result[key] = safeJsonParse(localStorage.getItem(key), key === 'quotas' ? null : []);
+        } else if (['quotas', 'history', 'syncLogs', 'quotaCacheByProfile', 'historyByProfile'].includes(key)) {
+          result[key] = safeJsonParse(localStorage.getItem(key), key === 'quotas' ? null : (key.endsWith('ByProfile') ? {} : []));
         } else if (key === 'lastUpdated') {
           const value = Number(localStorage.getItem(key));
           result.lastUpdated = Number.isFinite(value) ? value : null;
@@ -412,7 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
       Object.entries(values).forEach(([key, value]) => {
         if (key === 'settings') {
           localStorage.setItem('quotaMonitorSettings', JSON.stringify(value));
-        } else if (key === 'quotas' || key === 'history' || key === 'syncLogs') {
+        } else if (['quotas', 'history', 'syncLogs', 'quotaCacheByProfile', 'historyByProfile'].includes(key)) {
           localStorage.setItem(key, JSON.stringify(value));
         } else if (value === undefined || value === null) {
           localStorage.removeItem(key);
@@ -438,15 +570,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function exportConfig() {
-    const result = await storageGet(['settings', 'localePreference', 'quotas', 'history', 'lastUpdated', 'syncLogs']);
+    const result = await storageGet(['settings', 'localePreference', 'quotas', 'history', 'quotaCacheByProfile', 'historyByProfile', 'lastUpdated', 'syncLogs']);
     const monitoringData = sanitizeMonitoringData({
       quotas: result.quotas,
       history: result.history,
+      quotaCacheByProfile: result.quotaCacheByProfile,
+      historyByProfile: result.historyByProfile,
       lastUpdated: result.lastUpdated,
       syncLogs: result.syncLogs
     });
     const payload = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       app: 'cloudflare-quota-monitor',
       exportedAt: new Date().toISOString(),
       settings: sanitizeSettings(result.settings || {}),
@@ -463,11 +597,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasMonitoringData = Boolean(payload.monitoringData)
       || Object.prototype.hasOwnProperty.call(payload, 'quotas')
       || Object.prototype.hasOwnProperty.call(payload, 'history')
+      || Object.prototype.hasOwnProperty.call(payload, 'quotaCacheByProfile')
+      || Object.prototype.hasOwnProperty.call(payload, 'historyByProfile')
       || Object.prototype.hasOwnProperty.call(payload, 'lastUpdated')
       || Object.prototype.hasOwnProperty.call(payload, 'syncLogs');
     const monitoringData = sanitizeMonitoringData(payload.monitoringData || {
       quotas: payload.quotas,
       history: payload.history,
+      quotaCacheByProfile: payload.quotaCacheByProfile,
+      historyByProfile: payload.historyByProfile,
       lastUpdated: payload.lastUpdated,
       syncLogs: payload.syncLogs
     });
@@ -488,6 +626,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (hasMonitoringData) {
       values.quotas = monitoringData.quotas;
       values.history = monitoringData.history;
+      values.quotaCacheByProfile = monitoringData.quotaCacheByProfile;
+      values.historyByProfile = monitoringData.historyByProfile;
       values.lastUpdated = monitoringData.lastUpdated;
       values.syncLogs = monitoringData.syncLogs;
     }
@@ -777,6 +917,52 @@ document.addEventListener('DOMContentLoaded', () => {
           chrome.runtime.sendMessage({ action: 'refreshQuotas' });
         }
       });
+    });
+  }
+
+  if (profileSelect) {
+    profileSelect.addEventListener('change', () => {
+      const current = currentSettings({ profiles: accountProfiles, activeProfileId });
+      accountProfiles = current.profiles;
+      activeProfileId = profileSelect.value;
+      applySettings({ profiles: accountProfiles, activeProfileId });
+    });
+  }
+
+  if (newProfileBtn) {
+    newProfileBtn.addEventListener('click', () => {
+      const current = currentSettings({ profiles: accountProfiles, activeProfileId });
+      accountProfiles = current.profiles;
+      const profile = sanitizeProfile({
+        id: `profile-${Date.now()}`,
+        label: `Account ${accountProfiles.length + 1}`,
+        enabled: true
+      }, accountProfiles.length);
+      accountProfiles = accountProfiles.concat(profile);
+      activeProfileId = profile.id;
+      applySettings({ profiles: accountProfiles, activeProfileId });
+      showMessage('New account profile ready. Add its token and Account ID, then save.');
+    });
+  }
+
+  if (deleteProfileBtn) {
+    deleteProfileBtn.addEventListener('click', () => {
+      if (accountProfiles.length <= 1) return;
+      accountProfiles = accountProfiles.filter(profile => profile.id !== activeProfileId);
+      activeProfileId = accountProfiles[0]?.id || '';
+      applySettings({ profiles: accountProfiles, activeProfileId });
+      showMessage('Account profile removed locally. Save to confirm.', 'is-success');
+    });
+  }
+
+  if (accountProfileListEl) {
+    accountProfileListEl.addEventListener('click', event => {
+      const target = event.target.closest('[data-profile-id]');
+      if (!target) return;
+      const current = currentSettings({ profiles: accountProfiles, activeProfileId });
+      accountProfiles = current.profiles;
+      activeProfileId = target.dataset.profileId;
+      applySettings({ profiles: accountProfiles, activeProfileId });
     });
   }
 

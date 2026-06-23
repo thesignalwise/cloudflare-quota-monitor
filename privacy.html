@@ -14,7 +14,7 @@
         <img class="brand-logo" src="icons/icon48.png" alt="" />
         <div class="brand-copy">
           <h1 class="brand-title">Quota Monitor</h1>
-          <p class="brand-subtitle"><span id="sidebarVersion">v0.3.8</span> · Extension settings</p>
+          <p class="brand-subtitle"><span id="sidebarVersion">v0.4.0</span> · Extension settings</p>
         </div>
       </div>
       <nav class="settings-nav-list" aria-label="Settings sections">
@@ -52,10 +52,23 @@
         </a>
       </nav>
       <div class="settings-nav-footer">
-        <a class="nav-footer-link" href="https://cloudflare-quota-monitor.thesignalwise.com/" target="_blank" rel="noreferrer" aria-label="Official website">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" stroke-width="2"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3c2.1 2.3 3.2 5.3 3.2 9S14.1 18.7 12 21c-2.1-2.3-3.2-5.3-3.2-9S9.9 5.3 12 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <div class="nav-locale" id="language-settings">
+          <button id="localeMenuBtn" class="nav-footer-link nav-footer-link--locale" type="button" aria-label="Language" aria-haspopup="menu" aria-expanded="false">
+            <span class="locale-trigger-code" data-locale-code aria-hidden="true"></span>
+          </button>
+          <div id="localeMenu" class="locale-menu" role="menu" aria-label="Language" hidden>
+            <button class="locale-menu-item" type="button" role="menuitemradio" data-locale-option="auto">🌐 <span>Follow browser</span></button>
+            <button class="locale-menu-item" type="button" role="menuitemradio" data-locale-option="zh-CN">🇨🇳 <span>简体中文</span></button>
+            <button class="locale-menu-item" type="button" role="menuitemradio" data-locale-option="zh-TW">🇭🇰 <span>繁體中文</span></button>
+            <button class="locale-menu-item" type="button" role="menuitemradio" data-locale-option="en">🇺🇸 <span>English</span></button>
+            <button class="locale-menu-item" type="button" role="menuitemradio" data-locale-option="ja">🇯🇵 <span>日本語</span></button>
+            <button class="locale-menu-item" type="button" role="menuitemradio" data-locale-option="ko">🇰🇷 <span>한국어</span></button>
+          </div>
+        </div>
+        <a class="nav-footer-link nav-footer-link--site" href="https://cloudflare-quota-monitor.thesignalwise.com/" target="_blank" rel="noreferrer" aria-label="Official website">
+          <span class="nav-footer-icon nav-footer-icon--home" aria-hidden="true"></span>
         </a>
-        <a class="nav-footer-link" href="https://github.com/thesignalwise/cloudflare-quota-monitor" target="_blank" rel="noreferrer" aria-label="GitHub repository">
+        <a class="nav-footer-link nav-footer-link--github" href="https://github.com/thesignalwise/cloudflare-quota-monitor" target="_blank" rel="noreferrer" aria-label="GitHub repository">
           <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 18c-2.2.7-2.2-1.1-3.1-1.3M15.5 21v-3.9c0-1.1.1-1.5-.5-2.1 2.8-.3 5.7-1.4 5.7-6.1 0-1.4-.5-2.5-1.3-3.4.1-.3.6-1.7-.1-3.4 0 0-1.1-.3-3.5 1.3a12 12 0 0 0-6.4 0C7 1.8 5.9 2.1 5.9 2.1c-.7 1.7-.2 3.1-.1 3.4A5.1 5.1 0 0 0 4.5 9c0 4.7 2.9 5.8 5.7 6.1-.4.4-.7.9-.8 1.7V21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
       </div>
@@ -69,7 +82,7 @@
         </div>
         <div class="heading-actions">
           <span class="summary-badge">Local first</span>
-          <span class="summary-badge" id="headerVersion">v0.3.8</span>
+          <span class="summary-badge" id="headerVersion">v0.4.0</span>
         </div>
       </section>
 
@@ -82,7 +95,7 @@
           <div class="privacy-grid">
             <article>
               <strong>Cloudflare credentials</strong>
-              <p>API token and account ID entered by the user.</p>
+              <p>API tokens, account IDs, and local account profile labels entered by the user.</p>
             </article>
             <article>
               <strong>Quota telemetry</strong>
@@ -90,7 +103,7 @@
             </article>
             <article>
               <strong>Exported configuration file</strong>
-              <p>API token, account ID, latest quota cache, and dashboard history if the user chooses to export a local JSON configuration file.</p>
+              <p>Account profiles, API tokens, account IDs, latest quota cache, and dashboard history if the user chooses to export a local JSON configuration file.</p>
             </article>
           </div>
         </section>
@@ -101,8 +114,8 @@
             <span class="status-badge">Chrome storage</span>
           </div>
           <div class="policy-section">
-            <p>The extension stores settings and cached quota results in `chrome.storage.local` on the user's browser profile. It sends the API token only to `https://api.cloudflare.com/` to verify the token and read quota telemetry.</p>
-            <p>Configuration export creates a local JSON file selected by the user. It includes settings, latest quota cache, and dashboard history. The extension does not upload backup data, operate a server, or receive, sell, or share user data.</p>
+            <p>The extension stores account profiles, settings, and cached quota results in `chrome.storage.local` on the user's browser profile. It sends Cloudflare API tokens only to `https://api.cloudflare.com/` to verify token access and read quota telemetry for the configured accounts.</p>
+            <p>Configuration export creates a local JSON file selected by the user. It includes account profiles, settings, latest quota cache, and dashboard history. The extension does not upload backup data, operate a server, or receive, sell, or share user data.</p>
           </div>
         </section>
 

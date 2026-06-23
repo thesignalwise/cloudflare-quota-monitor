@@ -15,29 +15,25 @@
           <img class="brand-logo brand-logo--small" src="icons/icon48.png" alt="" />
           <div class="brand-copy">
             <h1 class="brand-title">Quota Monitor</h1>
+            <p class="brand-subtitle">Multi-account quota health</p>
           </div>
         </div>
-        <button id="refreshBtn" class="icon-button" type="button" aria-label="Refresh quotas">
+        <button id="refreshBtn" class="btn btn--secondary popup-refresh-btn" type="button" aria-label="Refresh quotas">
           <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M20 12a8 8 0 0 1-13.66 5.66" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             <path d="M4 12A8 8 0 0 1 17.66 6.34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             <path d="M17 2v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M7 22v-5H2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
+          <span>Refresh</span>
         </button>
       </div>
     </header>
 
-    <nav class="tab-row" aria-label="Extension views">
-      <a class="tab-link is-active" href="popup.html">Popup</a>
-      <a class="tab-link" href="dashboard.html" target="_blank" rel="noreferrer">Dashboard</a>
-      <a class="tab-link" href="options.html" target="_blank" rel="noreferrer">Settings</a>
-    </nav>
-
     <section class="popup-content" aria-label="Current quota usage">
       <div class="popup-command">
         <div class="popup-risk">
-          <span>Highest usage</span>
+          <span>Overall risk</span>
           <strong id="topPercent">--</strong>
           <small id="topLabel">Waiting for data</small>
         </div>
@@ -52,7 +48,7 @@
           </div>
           <div>
             <strong id="trackedCount">0</strong>
-            <span>tracked</span>
+            <span>accounts</span>
           </div>
         </div>
       </div>
@@ -63,8 +59,15 @@
     </section>
 
     <footer class="popup-actions">
-      <button id="dashboardBtn" class="btn btn--primary btn--wide" type="button">
-        <span>Dashboard</span>
+      <button id="settingsBtn" class="btn btn--secondary" type="button">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.04.04a2.1 2.1 0 0 1-2.97 2.97l-.04-.04A1.7 1.7 0 0 0 14.9 19.5a1.7 1.7 0 0 0-1.02 1.56V21a2.1 2.1 0 0 1-4.2 0v-.06A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.04.04a2.1 2.1 0 0 1-2.97-2.97l.04-.04A1.7 1.7 0 0 0 4.1 14.9a1.7 1.7 0 0 0-1.56-1.02H2.5a2.1 2.1 0 0 1 0-4.2h.06A1.7 1.7 0 0 0 4.1 8.6a1.7 1.7 0 0 0-.34-1.88l-.04-.04a2.1 2.1 0 0 1 2.97-2.97l.04.04A1.7 1.7 0 0 0 8.6 4.1a1.7 1.7 0 0 0 1.02-1.56V2.5a2.1 2.1 0 0 1 4.2 0v.06A1.7 1.7 0 0 0 14.9 4.1a1.7 1.7 0 0 0 1.88-.34l.04-.04a2.1 2.1 0 0 1 2.97 2.97l-.04.04A1.7 1.7 0 0 0 19.4 8.6a1.7 1.7 0 0 0 1.56 1.02H21a2.1 2.1 0 0 1 0 4.2h-.06A1.7 1.7 0 0 0 19.4 15Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>API Settings</span>
+      </button>
+      <button id="dashboardBtn" class="btn btn--primary" type="button">
+        <span>Open Dashboard</span>
         <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M7 17 17 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           <path d="M8 7h9v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
